@@ -2818,6 +2818,125 @@ function BadgesTab({ badges, xp, streak, tasks, onImport }) {
 
 
 // ════════════════════════════════════════════════
+// PRICING COMPONENT
+// ════════════════════════════════════════════════
+function PricingPlans({ selectedPlan, onSelectPlan }) {
+  const plans = [
+    {
+      id: "free",
+      name: "Kostenlos",
+      price: "€0",
+      period: "für immer",
+      features: [
+        "✅ Bis zu 3 Lernsessions pro Tag",
+        "✅ Grundlegende Timer-Funktionen",
+        "✅ Einfache Aufgabenverwaltung",
+        "❌ Keine KI-Flashcards",
+        "❌ Keine Statistiken"
+      ],
+      color: T.border,
+      accent: T.muted
+    },
+    {
+      id: "pro",
+      name: "Pro",
+      price: "€9,99",
+      period: "pro Monat",
+      features: [
+        "✅ Unbegrenzte Lernsessions",
+        "✅ KI-generierte Flashcards",
+        "✅ Detaillierte Lernstatistiken",
+        "✅ Erweiterte Timer-Funktionen",
+        "✅ Prioritätssupport"
+      ],
+      color: T.accent,
+      accent: T.accent,
+      popular: true
+    },
+    {
+      id: "student",
+      name: "Student",
+      price: "€4,99",
+      period: "pro Monat",
+      features: [
+        "✅ Unbegrenzte Lernsessions",
+        "✅ KI-generierte Flashcards (100/Monat)",
+        "✅ Grundlegende Statistiken",
+        "✅ Alle Timer-Funktionen",
+        "✅ Studenten-Validierung erforderlich"
+      ],
+      color: T.green,
+      accent: T.green
+    }
+  ];
+
+  return (
+    <div style={{ marginBottom: 24 }}>
+      <div style={{ textAlign: "center", marginBottom: 20 }}>
+        <div style={{ fontSize: 18, fontWeight: 600, marginBottom: 8 }}>Wähle deinen Plan</div>
+        <div style={{ fontSize: 13, color: T.muted }}>Starte kostenlos oder upgrade für alle Features</div>
+      </div>
+      
+      <div style={{ display: "flex", gap: 12, marginBottom: 20 }}>
+        {plans.map(plan => (
+          <div
+            key={plan.id}
+            onClick={() => onSelectPlan(plan.id)}
+            style={{
+              flex: 1,
+              border: `2px solid ${selectedPlan === plan.id ? plan.color : T.border}`,
+              borderRadius: 16,
+              padding: 16,
+              background: selectedPlan === plan.id ? plan.color + "11" : T.card,
+              cursor: "pointer",
+              position: "relative",
+              transition: "all 0.2s ease"
+            }}
+          >
+            {plan.popular && (
+              <div style={{
+                position: "absolute",
+                top: -10,
+                left: "50%",
+                transform: "translateX(-50%)",
+                background: plan.accent,
+                color: "white",
+                padding: "4px 12px",
+                borderRadius: 12,
+                fontSize: 11,
+                fontWeight: 600
+              }}>
+                Beliebt
+              </div>
+            )}
+            
+            <div style={{ textAlign: "center", marginBottom: 12 }}>
+              <div style={{ fontSize: 16, fontWeight: 600, color: plan.accent, marginBottom: 4 }}>
+                {plan.name}
+              </div>
+              <div style={{ fontSize: 20, fontWeight: 700, marginBottom: 2 }}>
+                {plan.price}
+              </div>
+              <div style={{ fontSize: 11, color: T.muted }}>
+                {plan.period}
+              </div>
+            </div>
+            
+            <div style={{ fontSize: 11, lineHeight: 1.4 }}>
+              {plan.features.map((feature, idx) => (
+                <div key={idx} style={{ marginBottom: 4, color: feature.includes("❌") ? T.muted : T.text }}>
+                  {feature}
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ════════════════════════════════════════════════
 // LOGIN SCREEN
 // ════════════════════════════════════════════════
 function LoginScreen() {
@@ -2826,6 +2945,7 @@ function LoginScreen() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState(null);
+  const [selectedPlan, setSelectedPlan] = useState("free");
 
   const handle = async () => {
     setLoading(true); setMessage(null);
@@ -2836,7 +2956,7 @@ function LoginScreen() {
       } else if (mode === "register") {
         const { error } = await signUp(email, password);
         if (error) throw error;
-        setMessage({ type: "ok", text: "Registriert! Prüfe deine E-Mails zur Bestätigung." });
+        setMessage({ type: "ok", text: `Registriert als ${selectedPlan === "free" ? "Kostenlos" : selectedPlan === "student" ? "Student" : "Pro"}! Prüfe deine E-Mails zur Bestätigung.` });
       } else {
         const { error } = await signIn(email, password);
         if (error) throw error;
@@ -2869,6 +2989,10 @@ function LoginScreen() {
             ))}
           </div>
 
+          {mode === "register" && (
+            <PricingPlans selectedPlan={selectedPlan} onSelectPlan={setSelectedPlan} />
+          )}
+
           <div style={{ marginBottom: 14 }}>
             <div style={{ fontSize: 12, color: T.muted, marginBottom: 6 }}>E-Mail</div>
             <input type="email" value={email} onChange={e => setEmail(e.target.value)}
@@ -2895,8 +3019,14 @@ function LoginScreen() {
 
           <button onClick={handle} disabled={loading || !email}
             style={{ width: "100%", background: loading || !email ? T.border : `linear-gradient(135deg, ${T.accent}, #9f8ffa)`, border: "none", borderRadius: 12, padding: "14px", color: "white", cursor: loading || !email ? "not-allowed" : "pointer", fontSize: 15, fontWeight: 700, fontFamily: T.font }}>
-            {loading ? "⏳ Bitte warten..." : mode === "login" ? "Anmelden →" : mode === "register" ? "Registrieren →" : "Magic Link senden →"}
+            {loading ? "⏳ Bitte warten..." : mode === "login" ? "Anmelden →" : mode === "register" ? `Registrieren als ${selectedPlan === "free" ? "Kostenlos" : selectedPlan === "student" ? "Student" : "Pro"} →` : "Magic Link senden →"}
           </button>
+          
+          {mode === "register" && selectedPlan !== "free" && (
+            <div style={{ marginTop: 12, textAlign: "center", fontSize: 11, color: T.muted }}>
+              Nach der Registrierung kannst du deinen Plan in den Einstellungen aktivieren.
+            </div>
+          )}
         </div>
 
         <div style={{ textAlign: "center", marginTop: 16, fontSize: 12, color: T.muted }}>
