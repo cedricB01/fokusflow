@@ -142,9 +142,7 @@ const getStreakInfo = (streak) => {
   if (streak < 5)  return { icon: "🔥", color: "#f59e0b", label: `${streak} Tage`, sub: "Auf Kurs!" };
   if (streak < 7)  return { icon: "🔥", color: "#f97316", label: `${streak} Tage`, sub: "Stark!" };
   if (streak < 14) return { icon: "⚡", color: "#eab308", label: `${streak} Tage`, sub: "Wochenkrieger!" };
-  if (streak < 21) return { icon: "🌟", color: "#f59e0b", label: `${streak} Tage`, sub: "Unaufhaltsam!" };
-  if (streak < 30) return { icon: "💫", color: "#a78bfa", label: `${streak} Tage`, sub: "Legendär!" };
-  return { icon: "👑", color: "#fbbf24", label: `${streak} Tage`, sub: "Absolute Legende!" };
+  return { icon: "🏆", color: "#dc2626", label: `${streak} Tage`, sub: "Legende!" };
 };
 
 const BADGES = [
@@ -193,12 +191,59 @@ const DOPAMINE_TIPS = [
 ];
 
 // ════════════════════════════════════════════════
+// USER PLAN VALIDATION
+// ════════════════════════════════════════════════
+const getUserLimits = (plan) => {
+  const limits = {
+    free: {
+      maxExams: 3,
+      maxKIRequests: 10,
+      maxUploads: 5,
+      hasKIPlanGenerator: false,
+      hasStatistics: false,
+      hasPDFExport: false,
+      hasCalendarSync: false
+    },
+    student: {
+      maxExams: Infinity,
+      maxKIRequests: 100,
+      maxUploads: 50,
+      hasKIPlanGenerator: true,
+      hasStatistics: true,
+      hasPDFExport: false,
+      hasCalendarSync: false
+    },
+    plus: {
+      maxExams: Infinity,
+      maxKIRequests: Infinity,
+      maxUploads: Infinity,
+      hasKIPlanGenerator: true,
+      hasStatistics: true,
+      hasPDFExport: true,
+      hasCalendarSync: true
+    }
+  };
+  return limits[plan] || limits.free;
+};
+
+const canUseFeature = (feature, userPlan) => {
+  const limits = getUserLimits(userPlan);
+  return limits[feature] || false;
+};
+
+const getLimit = (limit, userPlan) => {
+  const limits = getUserLimits(userPlan);
+  return limits[limit] || 0;
+};
+
+// ════════════════════════════════════════════════
 // MAIN APP
 // ════════════════════════════════════════════════
 export default function App() {
   const [user, setUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
+  const [userPlan, setUserPlan] = useState("free");
   const [tab, setTab] = useState("dashboard");
   const [xp, setXp] = useState(0);
   const [streak, setStreak] = useState(0);
@@ -253,6 +298,7 @@ export default function App() {
         setLastStudyDate(profile.last_study_date || "");
         setDailyMinutes(profile.daily_minutes || 60);
         setBadges(profile.badges || []);
+        setUserPlan(profile.plan || "free");
       }
       setExams(dbExams.map(convertExam));
       setTasks(dbTasks.map(convertTask));
@@ -654,6 +700,26 @@ export default function App() {
               </button>
             );
           })}
+        </div>
+        
+        {/* Mobile Abmeldung */}
+        <div style={{ padding: "8px 16px", borderTop: `1px solid ${T.border}` }}>
+          <button 
+            onClick={async () => { await signOut(); resetData(); }} 
+            style={{ 
+              width: "100%", 
+              background: "transparent", 
+              border: `1px solid ${T.border}`,
+              borderRadius: 8, 
+              padding: "8px 12px", 
+              color: T.muted, 
+              cursor: "pointer",
+              fontSize: 12,
+              textAlign: "center"
+            }}
+          >
+            ↩ Abmelden
+          </button>
         </div>
       </div>
     </div>
