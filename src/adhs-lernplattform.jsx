@@ -516,6 +516,7 @@ export default function App() {
     { id: "focus", icon: "🎯", label: "Fokus" },
     { id: "badges", icon: "🏅", label: "Badges" },
     { id: "chat", icon: "🤖", label: "KI-Coach" },
+    { id: "profil", icon: "👤", label: "Profil" },
   ];
 
   if (authLoading) {
@@ -672,6 +673,7 @@ export default function App() {
         {tab === "karten" && <Flashcards exams={exams} cards={cards} setCards={setCards} addXP={addXP} />}
         {tab === "badges" && <BadgesTab badges={badges} xp={xp} streak={streak} tasks={tasks} onImport={handleDataImport} />}
         {tab === "chat" && <Chat exams={exams} tasks={tasks} />}
+        {tab === "profil" && <Profile user={user} userPlan={userPlan} setUserPlan={setUserPlan} xp={xp} streak={streak} badges={badges} />}
       </main>
 
       {/* Mobile Bottom Navigation */}
@@ -683,6 +685,7 @@ export default function App() {
             { id: "kalender", icon: "🗓️", label: "Plan" },
             { id: "karten", icon: "🃏", label: "Karten" },
             { id: "focus", icon: "🎯", label: "Fokus" },
+            { id: "profil", icon: "👤", label: "Profil" },
           ].map(n => {
             const isActive = tab === n.id;
             return (
@@ -2941,6 +2944,8 @@ function PricingPlans({ selectedPlan, onSelectPlan }) {
     }
   ];
 
+  const isMobile = window.innerWidth <= 768;
+
   return (
     <div style={{ marginBottom: 24 }}>
       <div style={{ textAlign: "center", marginBottom: 20 }}>
@@ -2948,20 +2953,26 @@ function PricingPlans({ selectedPlan, onSelectPlan }) {
         <div style={{ fontSize: 13, color: T.muted }}>Starte kostenlos oder upgrade für alle Features</div>
       </div>
       
-      <div style={{ display: "flex", gap: 12, marginBottom: 20 }}>
+      <div style={{ 
+        display: isMobile ? "block" : "flex", 
+        gap: isMobile ? 12 : 16, 
+        marginBottom: 20 
+      }}>
         {plans.map(plan => (
           <div
             key={plan.id}
             onClick={() => onSelectPlan(plan.id)}
             style={{
-              flex: 1,
+              width: isMobile ? "100%" : "auto",
+              flex: isMobile ? "none" : 1,
               border: `2px solid ${selectedPlan === plan.id ? plan.color : T.border}`,
               borderRadius: 16,
               padding: 16,
               background: selectedPlan === plan.id ? plan.color + "11" : T.card,
               cursor: "pointer",
               position: "relative",
-              transition: "all 0.2s ease"
+              transition: "all 0.2s ease",
+              marginBottom: isMobile ? 12 : 0
             }}
           >
             {plan.popular && (
@@ -3340,6 +3351,253 @@ function EmptyState({ icon, text }) {
     <div style={{ textAlign: "center", padding: "60px 0", color: T.muted }}>
       <div style={{ fontSize: 48, marginBottom: 12 }}>{icon}</div>
       <div style={{ fontSize: 14, maxWidth: 360, margin: "0 auto" }}>{text}</div>
+    </div>
+  );
+}
+
+// ════════════════════════════════════════════════
+// PROFIL COMPONENT
+// ════════════════════════════════════════════════
+function Profile({ user, userPlan, setUserPlan, xp, streak, badges }) {
+  const [editingPlan, setEditingPlan] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState(userPlan);
+
+  const plans = [
+    {
+      id: "free",
+      name: "Kostenlos",
+      price: "€0",
+      period: "für immer",
+      features: [
+        "✅ 3 Klausuren gleichzeitig",
+        "✅ 10 KI-Anfragen/Monat",
+        "✅ 5 Dokument-Uploads/Monat",
+        "✅ Fokus Timer unbegrenzt",
+        "✅ Kein Zeitlimit"
+      ],
+      color: T.border,
+      accent: T.muted
+    },
+    {
+      id: "student",
+      name: "Student",
+      price: "€2,99",
+      period: "pro Monat",
+      yearlyPrice: "€24,99/Jahr (2 Monate gratis)",
+      features: [
+        "✅ Unbegrenzte Klausuren",
+        "✅ 100 KI-Anfragen/Monat",
+        "✅ 50 Dokument-Uploads/Monat",
+        "✅ KI-Lernplan Generator",
+        "✅ Detaillierte Statistiken"
+      ],
+      color: T.green,
+      accent: T.green
+    },
+    {
+      id: "plus",
+      name: "Plus",
+      price: "€4,99",
+      period: "pro Monat",
+      yearlyPrice: "€39,99/Jahr",
+      features: [
+        "✅ Alles unbegrenzt",
+        "✅ Priorität bei KI-Anfragen",
+        "✅ Export als PDF",
+        "✅ Kalender-Sync (Google/Apple)"
+      ],
+      color: T.accent,
+      accent: T.accent
+    }
+  ];
+
+  const currentPlanInfo = plans.find(p => p.id === userPlan);
+
+  const handlePlanChange = async () => {
+    if (selectedPlan !== userPlan) {
+      // TODO: Implement payment processing
+      alert(`Plan-Wechsel zu ${selectedPlan} wird implementiert!`);
+    }
+    setEditingPlan(false);
+  };
+
+  const isMobile = window.innerWidth <= 768;
+
+  return (
+    <div style={{ padding: isMobile ? 16 : 32, animation: "fadeUp 0.4s ease" }}>
+      <div style={{ fontFamily: T.font, fontSize: isMobile ? 24 : 28, fontWeight: 800, letterSpacing: -1, marginBottom: 24 }}>
+        Mein Profil
+      </div>
+
+      {/* Aktuelles Abo */}
+      <div style={{ background: `linear-gradient(135deg, ${currentPlanInfo.color}22, ${T.card})`, border: `2px solid ${currentPlanInfo.color}44`, borderRadius: 16, padding: 24, marginBottom: 32 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+          <div>
+            <div style={{ fontSize: 20, fontWeight: 700, color: currentPlanInfo.accent, marginBottom: 4 }}>
+              {currentPlanInfo.name}
+            </div>
+            <div style={{ fontSize: 24, fontWeight: 800, marginBottom: 4 }}>
+              {currentPlanInfo.price}
+            </div>
+            <div style={{ fontSize: 13, color: T.muted }}>
+              {currentPlanInfo.period}
+            </div>
+            {currentPlanInfo.yearlyPrice && (
+              <div style={{ fontSize: 12, color: currentPlanInfo.accent, fontWeight: 600, marginTop: 4 }}>
+                {currentPlanInfo.yearlyPrice}
+              </div>
+            )}
+          </div>
+          <div style={{ 
+            width: 60, height: 60, borderRadius: "50%", 
+            background: `linear-gradient(135deg, ${currentPlanInfo.color}, ${currentPlanInfo.color}88)`,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            fontSize: 24, color: "white"
+          }}>
+            {currentPlanInfo.id === "free" ? "🆓" : currentPlanInfo.id === "student" ? "🎓" : "⭐"}
+          </div>
+        </div>
+
+        <div style={{ fontSize: 13, lineHeight: 1.6 }}>
+          {currentPlanInfo.features.map((feature, idx) => (
+            <div key={idx} style={{ marginBottom: 4, color: feature.includes("❌") ? T.muted : T.text }}>
+              {feature}
+            </div>
+          ))}
+        </div>
+
+        <button 
+          onClick={() => setEditingPlan(true)}
+          style={{
+            width: "100%", 
+            background: `linear-gradient(135deg, ${currentPlanInfo.color}, ${currentPlanInfo.color}88)`,
+            border: "none", 
+            borderRadius: 12, 
+            padding: "14px", 
+            color: "white", 
+            cursor: "pointer", 
+            fontSize: 15, 
+            fontWeight: 700, 
+            fontFamily: T.font,
+            marginTop: 16
+          }}
+        >
+          Plan ändern →
+        </button>
+      </div>
+
+      {/* Stats */}
+      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "1fr 1fr 1fr", gap: 16, marginBottom: 32 }}>
+        <div style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 12, padding: 16, textAlign: "center" }}>
+          <div style={{ fontSize: 24, marginBottom: 8 }}>⚡</div>
+          <div style={{ fontSize: 20, fontWeight: 700, color: T.accent }}>{xp}</div>
+          <div style={{ fontSize: 12, color: T.muted }}>XP Total</div>
+        </div>
+        <div style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 12, padding: 16, textAlign: "center" }}>
+          <div style={{ fontSize: 24, marginBottom: 8 }}>{getStreakInfo(streak).icon}</div>
+          <div style={{ fontSize: 20, fontWeight: 700, color: getStreakInfo(streak).color }}>{streak}</div>
+          <div style={{ fontSize: 12, color: T.muted }}>Tage Streak</div>
+        </div>
+        <div style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 12, padding: 16, textAlign: "center" }}>
+          <div style={{ fontSize: 24, marginBottom: 8 }}>🏅</div>
+          <div style={{ fontSize: 20, fontWeight: 700, color: T.green }}>{badges.length}</div>
+          <div style={{ fontSize: 12, color: T.muted }}>Badges</div>
+        </div>
+      </div>
+
+      {/* Plan-Wechsel Modal */}
+      {editingPlan && (
+        <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.5)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+          <div style={{ background: T.surface, borderRadius: 20, padding: 32, maxWidth: 600, width: "100%", maxHeight: "80vh", overflowY: "auto" }}>
+            <div style={{ fontFamily: T.font, fontSize: 20, fontWeight: 700, marginBottom: 20, textAlign: "center" }}>
+              Wähle deinen neuen Plan
+            </div>
+
+            <div style={{ display: isMobile ? "block" : "flex", gap: isMobile ? 12 : 16, marginBottom: 24 }}>
+              {plans.map(plan => (
+                <div
+                  key={plan.id}
+                  onClick={() => setSelectedPlan(plan.id)}
+                  style={{
+                    width: isMobile ? "100%" : "auto",
+                    flex: isMobile ? "none" : 1,
+                    border: `2px solid ${selectedPlan === plan.id ? plan.color : T.border}`,
+                    borderRadius: 16,
+                    padding: 16,
+                    background: selectedPlan === plan.id ? plan.color + "11" : T.card,
+                    cursor: "pointer",
+                    position: "relative",
+                    transition: "all 0.2s ease",
+                    marginBottom: isMobile ? 12 : 0
+                  }}
+                >
+                  <div style={{ textAlign: "center", marginBottom: 12 }}>
+                    <div style={{ fontSize: 16, fontWeight: 600, color: plan.accent, marginBottom: 4 }}>
+                      {plan.name}
+                    </div>
+                    <div style={{ fontSize: 20, fontWeight: 700, marginBottom: 2 }}>
+                      {plan.price}
+                    </div>
+                    <div style={{ fontSize: 11, color: T.muted, marginBottom: plan.yearlyPrice ? 4 : 0 }}>
+                      {plan.period}
+                    </div>
+                    {plan.yearlyPrice && (
+                      <div style={{ fontSize: 10, color: plan.accent, fontWeight: 600 }}>
+                        {plan.yearlyPrice}
+                      </div>
+                    )}
+                  </div>
+
+                  <div style={{ fontSize: 11, lineHeight: 1.4 }}>
+                    {plan.features.map((feature, idx) => (
+                      <div key={idx} style={{ marginBottom: 4, color: feature.includes("❌") ? T.muted : T.text }}>
+                        {feature}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div style={{ display: "flex", gap: 12, justifyContent: "flex-end" }}>
+              <button 
+                onClick={() => {
+                  setEditingPlan(false);
+                  setSelectedPlan(userPlan);
+                }}
+                style={{
+                  background: T.surface,
+                  border: `1px solid ${T.border}`,
+                  borderRadius: 10,
+                  padding: "12px 24px",
+                  color: T.muted,
+                  cursor: "pointer",
+                  fontSize: 14,
+                  fontWeight: 600
+                }}
+              >
+                Abbrechen
+              </button>
+              <button 
+                onClick={handlePlanChange}
+                disabled={selectedPlan === userPlan}
+                style={{
+                  background: selectedPlan === userPlan ? T.border : `linear-gradient(135deg, ${T.accent}, #9f8ffa)`,
+                  border: "none",
+                  borderRadius: 10,
+                  padding: "12px 24px",
+                  color: selectedPlan === userPlan ? T.muted : "white",
+                  cursor: selectedPlan === userPlan ? "not-allowed" : "pointer",
+                  fontSize: 14,
+                  fontWeight: 600
+                }}
+              >
+                {selectedPlan === userPlan ? "Aktueller Plan" : "Plan wechseln"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
