@@ -2828,45 +2828,46 @@ function PricingPlans({ selectedPlan, onSelectPlan }) {
       price: "€0",
       period: "für immer",
       features: [
-        "✅ Bis zu 3 Lernsessions pro Tag",
-        "✅ Grundlegende Timer-Funktionen",
-        "✅ Einfache Aufgabenverwaltung",
-        "❌ Keine KI-Flashcards",
-        "❌ Keine Statistiken"
+        "✅ 3 Klausuren gleichzeitig",
+        "✅ 10 KI-Anfragen/Monat",
+        "✅ 5 Dokument-Uploads/Monat",
+        "✅ Fokus Timer unbegrenzt",
+        "✅ Kein Zeitlimit"
       ],
       color: T.border,
       accent: T.muted
     },
     {
-      id: "pro",
-      name: "Pro",
-      price: "€9,99",
+      id: "student",
+      name: "Student",
+      price: "€2,99",
       period: "pro Monat",
+      yearlyPrice: "€24,99/Jahr (2 Monate gratis)",
       features: [
-        "✅ Unbegrenzte Lernsessions",
-        "✅ KI-generierte Flashcards",
-        "✅ Detaillierte Lernstatistiken",
-        "✅ Erweiterte Timer-Funktionen",
-        "✅ Prioritätssupport"
+        "✅ Unbegrenzte Klausuren",
+        "✅ 100 KI-Anfragen/Monat",
+        "✅ 50 Dokument-Uploads/Monat",
+        "✅ KI-Lernplan Generator",
+        "✅ Detaillierte Statistiken"
       ],
-      color: T.accent,
-      accent: T.accent,
+      color: T.green,
+      accent: T.green,
       popular: true
     },
     {
-      id: "student",
-      name: "Student",
+      id: "plus",
+      name: "Plus",
       price: "€4,99",
       period: "pro Monat",
+      yearlyPrice: "€39,99/Jahr",
       features: [
-        "✅ Unbegrenzte Lernsessions",
-        "✅ KI-generierte Flashcards (100/Monat)",
-        "✅ Grundlegende Statistiken",
-        "✅ Alle Timer-Funktionen",
-        "✅ Studenten-Validierung erforderlich"
+        "✅ Alles unbegrenzt",
+        "✅ Priorität bei KI-Anfragen",
+        "✅ Export als PDF",
+        "✅ Kalender-Sync (Google/Apple)"
       ],
-      color: T.green,
-      accent: T.green
+      color: T.accent,
+      accent: T.accent
     }
   ];
 
@@ -2917,9 +2918,14 @@ function PricingPlans({ selectedPlan, onSelectPlan }) {
               <div style={{ fontSize: 20, fontWeight: 700, marginBottom: 2 }}>
                 {plan.price}
               </div>
-              <div style={{ fontSize: 11, color: T.muted }}>
+              <div style={{ fontSize: 11, color: T.muted, marginBottom: plan.yearlyPrice ? 4 : 0 }}>
                 {plan.period}
               </div>
+              {plan.yearlyPrice && (
+                <div style={{ fontSize: 10, color: plan.accent, fontWeight: 600 }}>
+                  {plan.yearlyPrice}
+                </div>
+              )}
             </div>
             
             <div style={{ fontSize: 11, lineHeight: 1.4 }}>
@@ -2956,7 +2962,7 @@ function LoginScreen() {
       } else if (mode === "register") {
         const { error } = await signUp(email, password);
         if (error) throw error;
-        setMessage({ type: "ok", text: `Registriert als ${selectedPlan === "free" ? "Kostenlos" : selectedPlan === "student" ? "Student" : "Pro"}! Prüfe deine E-Mails zur Bestätigung.` });
+        setMessage({ type: "ok", text: `Registriert als ${selectedPlan === "free" ? "Kostenlos" : selectedPlan === "student" ? "Student" : "Plus"}! Prüfe deine E-Mails zur Bestätigung.` });
       } else {
         const { error } = await signIn(email, password);
         if (error) throw error;
@@ -3019,7 +3025,7 @@ function LoginScreen() {
 
           <button onClick={handle} disabled={loading || !email}
             style={{ width: "100%", background: loading || !email ? T.border : `linear-gradient(135deg, ${T.accent}, #9f8ffa)`, border: "none", borderRadius: 12, padding: "14px", color: "white", cursor: loading || !email ? "not-allowed" : "pointer", fontSize: 15, fontWeight: 700, fontFamily: T.font }}>
-            {loading ? "⏳ Bitte warten..." : mode === "login" ? "Anmelden →" : mode === "register" ? `Registrieren als ${selectedPlan === "free" ? "Kostenlos" : selectedPlan === "student" ? "Student" : "Pro"} →` : "Magic Link senden →"}
+            {loading ? "⏳ Bitte warten..." : mode === "login" ? "Anmelden →" : mode === "register" ? `Registrieren als ${selectedPlan === "free" ? "Kostenlos" : selectedPlan === "student" ? "Student" : "Plus"} →` : "Magic Link senden →"}
           </button>
           
           {mode === "register" && selectedPlan !== "free" && (
