@@ -193,6 +193,7 @@ const DOPAMINE_TIPS = [
 // ════════════════════════════════════════════════
 // USER PLAN VALIDATION
 // ════════════════════════════════════════════════
+// eslint-disable-next-line no-unused-vars
 const getUserLimits = (plan) => {
   const limits = {
     free: {
@@ -226,11 +227,13 @@ const getUserLimits = (plan) => {
   return limits[plan] || limits.free;
 };
 
+// eslint-disable-next-line no-unused-vars
 const canUseFeature = (feature, userPlan) => {
   const limits = getUserLimits(userPlan);
   return limits[feature] || false;
 };
 
+// eslint-disable-next-line no-unused-vars
 const getLimit = (limit, userPlan) => {
   const limits = getUserLimits(userPlan);
   return limits[limit] || 0;
@@ -243,6 +246,7 @@ export default function App() {
   const [user, setUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
+  // eslint-disable-next-line no-unused-vars
   const [userPlan, setUserPlan] = useState("free");
   const [tab, setTab] = useState("dashboard");
   const [xp, setXp] = useState(0);
