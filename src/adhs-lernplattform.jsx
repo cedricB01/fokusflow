@@ -1182,19 +1182,51 @@ function Heute({ tasks, exams, cards, setCards, addXP, dailyMinutes, setDailyMin
   let taskCount = 0;
   
   for (const t of sortedTasks) {
-    const dur = t.duration || 25; // Individuelle Dauer der Aufgabe behalten
-    const needsPause = taskCount > 0; // Nach jeder Aufgabe außer der ersten
-    const totalTimeNeeded = dur + (needsPause ? 5 : 0);
+    const originalDuration = t.duration || 25;
     
-    // Strikte Zeitbegrenzung: nur planen wenn Aufgabe + Pause komplett in die verfügbare Zeit passt
-    if (remainingTime >= totalTimeNeeded) { 
-      todayPlan.push({ ...t, duration: dur }); // Task mit individueller Dauer
-      remainingTime -= dur;
-      taskCount++;
+    // Task aufteilen wenn länger als 25 Minuten
+    if (originalDuration > 25) {
+      const blocksNeeded = Math.ceil(originalDuration / 25);
+      for (let i = 0; i < blocksNeeded; i++) {
+        const needsPause = taskCount > 0; // Nach jeder Aufgabe außer der ersten
+        const totalTimeNeeded = 25 + (needsPause ? 5 : 0);
+        
+        if (remainingTime >= totalTimeNeeded) {
+          const blockTask = {
+            ...t,
+            duration: 25,
+            text: i === 0 ? t.text : `${t.text} (${i + 1}/${blocksNeeded})`,
+            isPartOfLargerTask: true,
+            originalTaskId: t.id,
+            blockIndex: i,
+            totalBlocks: blocksNeeded
+          };
+          todayPlan.push(blockTask);
+          remainingTime -= 25;
+          taskCount++;
+          
+          // Pause direkt einplanen
+          if (needsPause) {
+            remainingTime -= 5;
+          }
+        } else {
+          break; // Nicht genug Zeit für diesen Block
+        }
+      }
+    } else {
+      // Normale Task <= 25 Minuten
+      const needsPause = taskCount > 0;
+      const totalTimeNeeded = originalDuration + (needsPause ? 5 : 0);
       
-      // Pause direkt einplanen
-      if (needsPause) {
-        remainingTime -= 5;
+      if (remainingTime >= totalTimeNeeded) {
+        todayPlan.push({ ...t, duration: originalDuration });
+        remainingTime -= originalDuration;
+        taskCount++;
+        
+        // Pause direkt einplanen
+        if (needsPause) {
+          remainingTime -= 5;
+        }
       }
     }
     
