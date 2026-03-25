@@ -2964,10 +2964,10 @@ function Kalender({ exams, tasks, setTasks, dailyMinutes, addXP, semesterPlan, s
     });
 
     // Prompt kompakt halten damit JSON nicht abgeschnitten wird
-    // Max 14 Tage auf einmal planen, dann kannst du neu generieren
-    const maxDays = Math.min(
-      Math.max(...examList.map(e => e.daysLeft), 0),
-      30
+    // Tatsächliche Zeit bis zur letzten Klausur planen
+    const maxDays = Math.max(
+      ...examList.map(e => e.daysLeft),
+      7 // Mindestens 7 Tage planen
     );
 
     const todayFormatted = today.getFullYear()+'-'+String(today.getMonth()+1).padStart(2,'0')+'-'+String(today.getDate()).padStart(2,'0');
