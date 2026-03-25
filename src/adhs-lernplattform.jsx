@@ -999,8 +999,8 @@ function Heute({ tasks, exams, cards, setCards, addXP, dailyMinutes, setDailyMin
   const [prepCards, setPrepCards] = useState([]);
   const [showMorgen, setShowMorgen] = useState(false);
 
+  // eslint-disable-next-line no-unused-vars
   // Tagesplan berechnen - erledigte Aufgaben ans Ende verschieben
-  let timeLeft = dailyMinutes;
   const todayTasks = tasks.filter(t => !t.done || t.doneDate !== todayStr());
   const doneToday = tasks.filter(t => t.done && t.doneDate === todayStr());
   
