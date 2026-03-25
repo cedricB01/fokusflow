@@ -3009,6 +3009,13 @@ function Kalender({ exams, tasks, setTasks, dailyMinutes, addXP, semesterPlan, s
       ...examList.map(e => e.daysLeft),
       7 // Mindestens 7 Tage planen
     );
+    
+    // Debug: Ausgabe der Berechnung
+    console.log("Semesterplan Debug:", {
+      examCount: examList.length,
+      examDays: examList.map(e => ({ subject: e.subject, daysLeft: e.daysLeft, date: e.date })),
+      maxDays: maxDays
+    });
 
     const todayFormatted = today.getFullYear()+'-'+String(today.getMonth()+1).padStart(2,'0')+'-'+String(today.getDate()).padStart(2,'0');
 
