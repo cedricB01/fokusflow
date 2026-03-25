@@ -3035,6 +3035,12 @@ Fülle alle ${maxDays} Tage. examIds: ${examList.map(e => e.id).join(",")}`;
       const raw = await callClaudeLarge([{ role: "user", content: prompt }]);
       console.log("Claude Raw Response:", raw); // Debug: Rohantwort anzeigen
       
+      // Prüfen ob Backend-Fehler vorliegt
+      if (raw.includes("FEHLER:") || raw.includes("Backend nicht erreichbar")) {
+        console.error("Backend-Fehler:", raw);
+        throw new Error("Claude Backend nicht erreichbar. Bitte später erneut versuchen.");
+      }
+      
       const parsed = safeParseJSON(raw);
       if (!parsed || !parsed.days) {
         console.error("Claude Antwort ungültig:", parsed);
