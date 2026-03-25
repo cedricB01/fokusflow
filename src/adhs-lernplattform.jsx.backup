@@ -89,57 +89,33 @@ async function extractPdfText(file) {
 }
 
 async function callClaude(messages, systemPrompt = "") {
-  try {
-    const res = await fetch("/api/claude", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "claude-sonnet-4-20250514",
-        max_tokens: 4000,
-        system: systemPrompt,
-        messages,
-      }),
-    });
-    if (!res.ok) {
-      throw new Error(`API Fehler: ${res.status} ${res.statusText}`);
-    }
-    const data = await res.json();
-    return data.content?.[0]?.text || "";
-  } catch (error) {
-    console.error("Claude API Fehler:", error);
-    // Wenn API nicht erreichbar, simuliere eine Antwort
-    if (error.message.includes("fetch") || error.message.includes("API")) {
-      return "FEHLER: Backend nicht erreichbar. Bitte starten Sie das Backend oder kontaktieren Sie den Support.";
-    }
-    throw error;
-  }
+  const res = await fetch("/api/claude", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model: "claude-sonnet-4-20250514",
+      max_tokens: 4000,
+      system: systemPrompt,
+      messages,
+    }),
+  });
+  const data = await res.json();
+  return data.content?.[0]?.text || "";
 }
 
 async function callClaudeLarge(messages, systemPrompt = "") {
-  try {
-    const res = await fetch("/api/claude", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "claude-sonnet-4-20250514",
-        max_tokens: 8000,
-        system: systemPrompt,
-        messages,
-      }),
-    });
-    if (!res.ok) {
-      throw new Error(`API Fehler: ${res.status} ${res.statusText}`);
-    }
-    const data = await res.json();
-    return data.content?.[0]?.text || "";
-  } catch (error) {
-    console.error("Claude Large API Fehler:", error);
-    // Wenn API nicht erreichbar, simuliere eine Antwort
-    if (error.message.includes("fetch") || error.message.includes("API")) {
-      return "FEHLER: Backend nicht erreichbar. Bitte starten Sie das Backend oder kontaktieren Sie den Support.";
-    }
-    throw error;
-  }
+  const res = await fetch("/api/claude", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model: "claude-sonnet-4-20250514",
+      max_tokens: 8000,
+      system: systemPrompt,
+      messages,
+    }),
+  });
+  const data = await res.json();
+  return data.content?.[0]?.text || "";
 }
 
 function safeParseJSON(raw) {
@@ -798,6 +774,7 @@ export default function App() {
 function Dashboard({ tasks, exams, tip, xp, streak, dailyMinutes, usedMinutesToday, setTab, setDailyMinutes, setPreSelectedExam }) {
   const isMobile = useIsMobile();
   const [editingTime, setEditingTime] = useState(false);
+  const [tempMin, setTempMin] = useState(dailyMinutes);
   const [tempHours, setTempHours] = useState(Math.floor(dailyMinutes / 60));
   const [tempMinutesOnly, setTempMinutesOnly] = useState(dailyMinutes % 60);
   const doneTasks = tasks.filter(t => t.done).length;
@@ -812,6 +789,7 @@ function Dashboard({ tasks, exams, tip, xp, streak, dailyMinutes, usedMinutesTod
   
   // Update temp states when dailyMinutes changes
   useEffect(() => {
+    setTempMin(dailyMinutes);
     setTempHours(Math.floor(dailyMinutes / 60));
     setTempMinutesOnly(dailyMinutes % 60);
   }, [dailyMinutes]);
@@ -910,7 +888,9 @@ function Dashboard({ tasks, exams, tip, xp, streak, dailyMinutes, usedMinutesTod
                 value={tempHours} 
                 onChange={e => {
                   const hours = Number(e.target.value) || 0;
+                  const totalMinutes = hours * 60 + tempMinutesOnly;
                   setTempHours(hours);
+                  setTempMin(totalMinutes);
                 }}
                 onClick={(e) => e.stopPropagation()}
                 style={{ 
@@ -932,7 +912,9 @@ function Dashboard({ tasks, exams, tip, xp, streak, dailyMinutes, usedMinutesTod
                 value={tempMinutesOnly} 
                 onChange={e => {
                   const minutes = Math.min(59, Number(e.target.value) || 0);
+                  const totalMinutes = tempHours * 60 + minutes;
                   setTempMinutesOnly(minutes);
+                  setTempMin(totalMinutes);
                 }}
                 onClick={(e) => e.stopPropagation()}
                 style={{ 
@@ -960,7 +942,7 @@ function Dashboard({ tasks, exams, tip, xp, streak, dailyMinutes, usedMinutesTod
                   setDailyMinutes(totalMinutes);
                   setEditingTime(false);
                 }}
-                style={{ background: T.green, border: "none", borderRadius: 6, padding: "4px 10px", color: "white", cursor: "pointer", fontSize: 10 }}
+                style={{ background: T.green, border: "none", borderRadius: 6, padding: "4px 8px", color: "white", cursor: "pointer", fontSize: 10 }}
               >
                 ✓
               </button>
@@ -969,9 +951,10 @@ function Dashboard({ tasks, exams, tip, xp, streak, dailyMinutes, usedMinutesTod
                   e.stopPropagation();
                   setTempHours(Math.floor(dailyMinutes / 60));
                   setTempMinutesOnly(dailyMinutes % 60);
+                  setTempMin(dailyMinutes);
                   setEditingTime(false);
                 }}
-                style={{ background: T.red, border: "none", borderRadius: 6, padding: "4px 10px", color: "white", cursor: "pointer", fontSize: 10 }}
+                style={{ background: T.red, border: "none", borderRadius: 6, padding: "4px 8px", color: "white", cursor: "pointer", fontSize: 10 }}
               >
                 ✕
               </button>
@@ -1125,6 +1108,10 @@ function Heute({ tasks, exams, cards, setCards, addXP, dailyMinutes, setDailyMin
   
   for (const t of sortedTasks) {
     const dur = Math.min(t.duration || 25, 25); // Max 25 Minuten pro Aufgabe
+    
+    // Prüfen ob Aufgabe + Pause in die verbleibende Zeit passt
+    const needsPause = taskCount > 0 && remainingTime >= dur + 5;
+    const totalTimeNeeded = dur + (needsPause ? 5 : 0);
     
     if (remainingTime >= dur) { 
       todayPlan.push(t); 
@@ -1462,7 +1449,7 @@ NUR reines JSON: {"cards":[{"front":"Frage...","back":"Antwort..."}]}`;
             </div>
           </div>
 
-          {/* Aufgabenliste */}
+          {/* Aufgabenliste mit Pausen */}
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             {finalPlan.map((t, idx) => {
               const exam = exams.find(e => e.id === t.examId);
@@ -1470,19 +1457,22 @@ NUR reines JSON: {"cards":[{"front":"Frage...","back":"Antwort..."}]}`;
               const isFirst = idx === 0 && !isDone && todayDoneCount === idx;
               const prio = idx < 2 ? "🔴" : idx < 5 ? "🟡" : "🟢";
               const hasCards = (cards || []).filter(c => c.examId === t.examId).length;
+              const isTodayTask = !isDone && idx < todayPlan.length;
+              const shouldShowPause = isTodayTask && idx < todayPlan.length - 1; // Pause nach jeder außer letzter
 
               return (
-                <div key={t.id} style={{
-                  background: isDone ? T.surface : T.card, 
-                  border: `1px solid ${isFirst ? T.accent : isDone ? T.border : T.border}`,
-                  borderRadius: 14, 
-                  padding: isMobile ? "14px" : "16px 20px",
-                  borderLeft: `4px solid ${exam?.color || T.accent}`,
-                  animation: "fadeUp 0.3s ease",
-                  boxShadow: isFirst ? `0 0 20px ${T.accent}22` : "none",
-                  opacity: isDone ? 0.7 : 1,
-                  position: "relative"
-                }}>
+                <React.Fragment key={t.id}>
+                  <div style={{
+                    background: isDone ? T.surface : T.card, 
+                    border: `1px solid ${isFirst ? T.accent : isDone ? T.border : T.border}`,
+                    borderRadius: 14, 
+                    padding: isMobile ? "14px" : "16px 20px",
+                    borderLeft: `4px solid ${exam?.color || T.accent}`,
+                    animation: "fadeUp 0.3s ease",
+                    boxShadow: isFirst ? `0 0 20px ${T.accent}22` : "none",
+                    opacity: isDone ? 0.7 : 1,
+                    position: "relative"
+                  }}>
                   {isDone && (
                     <div style={{ 
                       position: "absolute", 
@@ -1536,6 +1526,7 @@ NUR reines JSON: {"cards":[{"front":"Frage...","back":"Antwort..."}]}`;
                     </button>
                   </div>
                 </div>
+                </React.Fragment>
               );
             })}
           </div>
@@ -2469,42 +2460,7 @@ function Kalender({ exams, tasks, setTasks, dailyMinutes, addXP, semesterPlan, s
 
   // Alle geplanten Lerntage aus tasks + semesterPlan zusammenführen
   const getDayEntries = (dateStr) => {
-    // Für heute: gleiche Logik wie Heute-Tab verwenden
-    const isTodayDate = dateStr === todayStr();
-    
-    if (isTodayDate) {
-      // Gleiche Logik wie im Heute-Tab
-      const todayTasks = tasks.filter(t => !t.done || t.doneDate !== todayStr());
-      const sortedTasks = [...todayTasks].sort((a, b) => {
-        const aPrio = (a.priority || 1) * 2;
-        const bPrio = (b.priority || 1) * 2;
-        return bPrio - aPrio;
-      });
-      
-      const todayPlan = [];
-      let remainingTime = dailyMinutes;
-      let taskCount = 0;
-      
-      for (const t of sortedTasks) {
-        const dur = Math.min(t.duration || 25, 25);
-        if (remainingTime >= dur) { 
-          todayPlan.push(t); 
-          remainingTime -= dur;
-          taskCount++;
-          if (taskCount < sortedTasks.length && remainingTime >= 5) {
-            remainingTime -= 5;
-          }
-        }
-        if (remainingTime < 15) break;
-      }
-      
-      return todayPlan.map(t => {
-        const exam = exams.find(e => e.id === t.examId);
-        return { ...t, examColor: exam?.color || T.accent, examSubject: exam?.subject };
-      });
-    }
-    
-    // Für andere Tage: Nur Tasks mit explizitem plannedDate
+    // Nur Tasks mit explizitem plannedDate – semesterPlan.days ist nur für die Generierung
     return tasks
       .filter(t => t.plannedDate === dateStr && !t.done)
       .map(t => {
