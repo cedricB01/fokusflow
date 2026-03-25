@@ -1182,11 +1182,11 @@ function Heute({ tasks, exams, cards, setCards, addXP, dailyMinutes, setDailyMin
   let taskCount = 0;
   
   for (const t of sortedTasks) {
-    const dur = Math.min(t.duration || 25, 45); // Eigene Dauer der Task verwenden, max 45min
+    const dur = Math.min(t.duration || 25, 25); // Max 25 Minuten pro Aufgabe
     const needsPause = taskCount > 0; // Nach jeder Aufgabe außer der ersten
     const totalTimeNeeded = dur + (needsPause ? 5 : 0);
     
-    // Nur planen wenn Aufgabe + Pause komplett in die Zeit passt
+    // Strikte Zeitbegrenzung: nur planen wenn Aufgabe + Pause komplett in die verfügbare Zeit passt
     if (remainingTime >= totalTimeNeeded) { 
       todayPlan.push(t); // Original Task mit eigener Dauer behalten
       remainingTime -= dur;
