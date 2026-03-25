@@ -75,17 +75,39 @@ function useIsMobile() {
 }
 
 async function extractPdfText(file) {
-  const pdfjsLib = await import('pdfjs-dist');
-  pdfjsLib.GlobalWorkerOptions.workerSrc = new URL('pdfjs-dist/build/pdf.worker.min.mjs', import.meta.url).toString();
-  const arrayBuffer = await file.arrayBuffer();
-  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-  let text = '';
-  for (let i = 1; i <= Math.min(pdf.numPages, 10); i++) {
-    const page = await pdf.getPage(i);
-    const content = await page.getTextContent();
-    text += content.items.map(item => item.str).join(' ') + '\n';
+  try {
+    const pdfjsLib = await import('pdfjs-dist');
+    pdfjsLib.GlobalWorkerOptions.workerSrc = new URL('pdfjs-dist/build/pdf.worker.min.mjs', import.meta.url).toString();
+    
+    const arrayBuffer = await file.arrayBuffer();
+    const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
+    const pdf = await loadingTask.promise;
+    
+    let text = '';
+    const maxPages = Math.min(pdf.numPages, 10);
+    
+    for (let i = 1; i <= maxPages; i++) {
+      try {
+        const page = await pdf.getPage(i);
+        const textContent = await page.getTextContent();
+        const pageText = textContent.items
+          .map(item => item.str || '')
+          .join(' ')
+          .trim();
+        if (pageText) {
+          text += pageText + '\n';
+        }
+      } catch (pageError) {
+        console.warn(`Konnte Seite ${i} nicht lesen:`, pageError);
+        continue;
+      }
+    }
+    
+    return text.trim();
+  } catch (error) {
+    console.error('PDF Extraktion fehlgeschlagen:', error);
+    throw new Error('PDF konnte nicht ausgelesen werden. Bitte laden Sie das Dokument als Text oder Bild hoch.');
   }
-  return text;
 }
 
 async function callClaude(messages, systemPrompt = "") {
@@ -2089,19 +2111,25 @@ function Upload({ exams, addXP, onAnalysisComplete, preSelectedExam = "" }) {
     if (text) return { type: "text", content: text };
     if (imageFiles.length > 0) return { type: "images", files: imageFiles };
     if (file) {
-      if (file.type === "application/pdf") {
-        const extracted = await extractPdfText(file);
-        if (extracted && extracted.trim().length >= 50) return { type: "text", content: extracted };
-        // PDF hat keinen auslesbaren Text → als Bild rendern
-        const imgData = await pdfToImage(file);
-        if (imgData) return { type: "images", files: [{ base64: imgData, type: "image/png", name: file.name }] };
-        return { type: "text", content: "" };
+      try {
+        if (file.type === "application/pdf") {
+          const extracted = await extractPdfText(file);
+          if (extracted && extracted.trim().length >= 10) return { type: "text", content: extracted };
+          // PDF hat keinen auslesbaren Text → als Bild rendern
+          const imgData = await pdfToImage(file);
+          if (imgData) return { type: "images", files: [{ base64: imgData, type: "image/png", name: file.name }] };
+        } else if (file.type.startsWith("image/")) {
+          const base64 = await fileToBase64(file);
+          return { type: "images", files: [{ base64, type: file.type, name: file.name }] };
+        } else {
+          // Textdateien direkt lesen
+          const content = await file.text();
+          return { type: "text", content };
+        }
+      } catch (error) {
+        console.error("Fehler beim Lesen der Datei:", error);
+        throw new Error("Die Datei konnte nicht verarbeitet werden. Bitte versuchen Sie es mit einer anderen Datei.");
       }
-      if (file.type.startsWith("image/")) {
-        const base64 = await fileToBase64(file);
-        return { type: "images", files: [{ base64, type: file.type, name: file.name }] };
-      }
-      return { type: "text", content: await file.text() };
     }
     return null;
   };
