@@ -1260,7 +1260,7 @@ NUR reines JSON: {"cards":[{"front":"Frage...","back":"Antwort..."}]}`;
     } catch { setPrepMode("choose"); }
   };
 
-  const startWithCards = (sessionCards, sessionLength = "short") => {
+  const startWithCards = (sessionCards) => {
     const t = prepTask.task;
     const exam = prepTask.exam;
     
@@ -1270,14 +1270,8 @@ NUR reines JSON: {"cards":[{"front":"Frage...","back":"Antwort..."}]}`;
     const maxCards = Math.max(4, Math.min(12, Math.ceil(baseDuration / 2))); // 2min pro Karte
     const limitedCards = sessionCards.slice(0, maxCards);
     
-    let sessionDuration;
-    if (sessionLength === "short") {
-      // Kurz-Session: max 25 Minuten, individuelle Dauer berücksichtigen
-      sessionDuration = Math.min(baseDuration, Math.max(10, Math.ceil(limitedCards.length * 2)));
-    } else {
-      // Lang-Session: max 25 Minuten (nicht 45!), individuelle Dauer berücksichtigen
-      sessionDuration = Math.min(baseDuration, Math.max(15, Math.ceil(limitedCards.length * 2)));
-    }
+    // Session-Dauer entspricht der Task-Dauer
+    const sessionDuration = baseDuration;
     
     const taskWithDuration = { ...t, duration: sessionDuration };
     setPrepTask(null); setPrepMode(null); setPrepCards([]);
@@ -1286,8 +1280,7 @@ NUR reines JSON: {"cards":[{"front":"Frage...","back":"Antwort..."}]}`;
       examId: t.examId, 
       examSubject: exam?.subject, 
       examColor: exam?.color, 
-      sessionCards: limitedCards,
-      sessionLength // Speichern für Verlängerungsoption
+      sessionCards: limitedCards
     });
   };
 
@@ -1333,45 +1326,6 @@ NUR reines JSON: {"cards":[{"front":"Frage...","back":"Antwort..."}]}`;
               </div>
             </div>
             
-            {/* Session-Länge Auswahl */}
-            <div style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 12, padding: 16, marginBottom: 20 }}>
-              <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 12 }}>Session-Länge wählen</div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                <button 
-                  onClick={() => startWithCards(prepCards, "short")}
-                  style={{
-                    background: T.accentSoft,
-                    border: `1px solid ${T.accent}44`,
-                    borderRadius: 10,
-                    padding: "12px 16px",
-                    color: T.text,
-                    cursor: "pointer",
-                    textAlign: "center"
-                  }}
-                >
-                  <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 4 }}>⚡ Kurz</div>
-                  <div style={{ fontSize: 11, color: T.muted }}>10-25 Min</div>
-                  <div style={{ fontSize: 10, color: T.accent, marginTop: 4 }}>ADHS-optimiert</div>
-                </button>
-                <button 
-                  onClick={() => startWithCards(prepCards, "long")}
-                  style={{
-                    background: T.surface,
-                    border: `1px solid ${T.border}`,
-                    borderRadius: 10,
-                    padding: "12px 16px",
-                    color: T.muted,
-                    cursor: "pointer",
-                    textAlign: "center"
-                  }}
-                >
-                  <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 4 }}>📚 Lang</div>
-                  <div style={{ fontSize: 11, color: T.muted }}>15-45 Min</div>
-                  <div style={{ fontSize: 10, color: T.muted, marginTop: 4 }}>Intensiv</div>
-                </button>
-              </div>
-            </div>
-            
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 20 }}>
               {prepCards.slice(0, 4).map(c => (
                 <div key={c.id} style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 8, padding: "6px 12px", fontSize: 11, color: T.muted, maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
@@ -1398,23 +1352,13 @@ NUR reines JSON: {"cards":[{"front":"Frage...","back":"Antwort..."}]}`;
                 {/* Themenspezifische Karten - NUR diese Option */}
                 {hasTopicCards && (
                   <div style={{ marginBottom: 10 }}>
-                    <button onClick={() => startWithCards(topicSpecific, "short")}
+                    <button onClick={() => startWithCards(topicSpecific)}
                       style={{ width: "100%", background: T.green + "22", border: `1px solid ${T.green}44`, borderRadius: 12, padding: "14px 18px", color: T.text, cursor: "pointer", textAlign: "left", marginBottom: 8 }}>
                       <div style={{ fontWeight: 600, fontSize: 14 }}>✅ Gespeicherte Karten für dieses Thema</div>
                       <div style={{ fontSize: 12, color: T.muted, marginTop: 3 }}>
-                        {Math.min(topicSpecific.length, 12)} Karten für „{t.text}" – themenspezifisch
+                        {Math.min(topicSpecific.length, 12)} Karten für „{t.text}" – {prepTask.task.duration || 25}min
                       </div>
                     </button>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                      <button onClick={() => startWithCards(topicSpecific, "short")}
-                        style={{ background: T.accentSoft, border: `1px solid ${T.accent}44`, borderRadius: 8, padding: "8px 12px", color: T.text, cursor: "pointer", fontSize: 12 }}>
-                        ⚡ Kurz (10-25min)
-                      </button>
-                      <button onClick={() => startWithCards(topicSpecific, "long")}
-                        style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 8, padding: "8px 12px", color: T.muted, cursor: "pointer", fontSize: 12 }}>
-                        📚 Lang (15-45min)
-                      </button>
-                    </div>
                   </div>
                 )}
 
@@ -1772,7 +1716,8 @@ function LernModus({ task, exams, cards, setCards, onComplete, onCancel, addXP }
     } else if (seconds === 0) {
       clearInterval(intervalRef.current);
       setRunning(false);
-      startQuiz();
+      // Verlängerungsoption anzeigen statt direkt Quiz zu starten
+      // startQuiz() wird erst nach Benutzer-Entscheidung aufgerufen
     }
     return () => clearInterval(intervalRef.current);
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1871,6 +1816,29 @@ Max 5 Fragen, 4 Optionen, correct = Index der richtigen Antwort.`;
                   Abfrage →
                 </button>
               </div>
+
+              {/* Verlängerungsoption bei Timer-Ende */}
+              {!running && seconds === 0 && (
+                <div style={{ background: T.accent + "11", border: `1px solid ${T.accent}44`, borderRadius: 12, padding: "16px", marginTop: 16 }}>
+                  <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 8, textAlign: "center", color: T.accent }}>
+                    ⏰ Zeit um! Möchtest du verlängern?
+                  </div>
+                  <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
+                    <button onClick={() => {
+                      const extension = Math.ceil(total * 0.5 / 60); // 50% der ursprünglichen Zeit
+                      setSeconds(seconds + extension * 60);
+                      setRunning(true);
+                    }}
+                      style={{ background: T.accent, border: "none", borderRadius: 8, padding: "8px 16px", color: "white", cursor: "pointer", fontSize: 12, fontWeight: 600 }}>
+                      +{Math.ceil(total * 0.5 / 60)}min
+                    </button>
+                    <button onClick={startQuiz}
+                      style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 8, padding: "8px 16px", color: T.muted, cursor: "pointer", fontSize: 12 }}>
+                      Zur Abfrage
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {sessionCards.length === 0 && (
                 <div style={{ marginTop: 14, fontSize: 12, color: T.muted, lineHeight: 1.6 }}>
@@ -4342,26 +4310,17 @@ function FileOverview({ exams, setTab, setPreSelectedExam }) {
 
   const exam = selectedExam ? exams.find(e => e.id === selectedExam) : null;
   
-  // Demo-Datei-Daten für verschiedene Fächer
-  const getDemoFiles = (examId) => {
-    const demoFiles = {
-      "math1": [
-        { name: "Analysis_Skript.pdf", type: "PDF", size: "2.3 MB", uploadDate: "2024-03-20" },
-        { name: "Integralrechnung.pdf", type: "PDF", size: "1.8 MB", uploadDate: "2024-03-18" }
-      ],
-      "phys1": [
-        { name: "Mechanik_Vorlesung.pdf", type: "PDF", size: "3.1 MB", uploadDate: "2024-03-19" },
-        { name: "Übungsblatt_1.pdf", type: "PDF", size: "856 KB", uploadDate: "2024-03-17" }
-      ],
-      "info1": [
-        { name: "Algorithmen_Skript.pdf", type: "PDF", size: "1.5 MB", uploadDate: "2024-03-20" },
-        { name: "Datenbanken.pdf", type: "PDF", size: "2.0 MB", uploadDate: "2024-03-16" }
-      ]
-    };
-    return demoFiles[examId] || [];
+  // Einfache Quell-Anzeige für Demo-Zwecke
+  const getSourceInfo = (examId) => {
+    // Später aus Datenbank laden, aktuell Platzhalter
+    return [
+      { topic: "Grundlagen", source: "Manuell eingegeben" },
+      { topic: "Schwerpunkte", source: "Datei Upload" },
+      { topic: "Prüfungsthemen", source: "Klausur analysiert" }
+    ];
   };
 
-  const examFiles = exam ? getDemoFiles(exam.id) : [];
+  const sourceInfo = exam ? getSourceInfo(exam.id) : [];
 
   return (
     <div style={{ padding: isMobile ? 16 : 32, animation: "fadeUp 0.4s ease" }}>
@@ -4399,13 +4358,13 @@ function FileOverview({ exams, setTab, setPreSelectedExam }) {
         </div>
       </div>
 
-      {/* Datei-Liste */}
+      {/* Quell-Info */}
       {exam && (
         <div style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 16, padding: 20 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
             <div>
               <div style={{ fontSize: 16, fontWeight: 600 }}>{exam.subject}</div>
-              <div style={{ fontSize: 12, color: T.muted }}>{examFiles.length} Dateien</div>
+              <div style={{ fontSize: 12, color: T.muted }}>Themenquellen</div>
             </div>
             <button
               onClick={() => {
@@ -4416,77 +4375,50 @@ function FileOverview({ exams, setTab, setPreSelectedExam }) {
                 background: T.accent,
                 border: "none",
                 borderRadius: 8,
-                padding: "8px 16px",
+                padding: "6px 12px",
                 color: "white",
                 cursor: "pointer",
                 fontSize: 12,
                 fontWeight: 600
               }}
             >
-              + Hochladen
+              + Hinzufügen
             </button>
           </div>
-
-          {examFiles.length === 0 ? (
-            <div style={{ textAlign: "center", padding: "40px 0", color: T.muted }}>
-              <div style={{ fontSize: 48, marginBottom: 12 }}>📂</div>
-              <div style={{ fontSize: 14 }}>Noch keine Dateien für {exam.subject}</div>
+          {sourceInfo.length === 0 ? (
+            <div style={{ textAlign: "center", padding: "40px 20px", color: T.muted }}>
+              <div style={{ fontSize: 24, marginBottom: 8 }}>📁</div>
+              <div>Noch keine Themenquellen vorhanden</div>
+              <div style={{ fontSize: 12, marginTop: 4 }}>Lade Dokumente hoch oder füge Themen manuell hinzu</div>
             </div>
           ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              {examFiles.map(file => (
-                <div key={file.id} style={{
-                  background: T.surface,
-                  border: `1px solid ${T.border}`,
-                  borderRadius: 12,
-                  padding: "16px",
+            <div style={{ display: "grid", gap: 12 }}>
+              {sourceInfo.map((item, idx) => (
+                <div key={idx} style={{ 
+                  background: T.surface, 
+                  border: `1px solid ${T.border}`, 
+                  borderRadius: 12, 
+                  padding: "12px 16px",
                   display: "flex",
                   justifyContent: "space-between",
                   alignItems: "center"
                 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                    <div style={{
-                      width: 40,
-                      height: 40,
-                      borderRadius: 8,
-                      background: file.type === "pdf" ? T.red + "22" : file.type === "image" ? T.green + "22" : T.blue + "22",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      fontSize: 20
-                    }}>
-                      {file.type === "pdf" ? "📄" : file.type === "image" ? "🖼️" : "📝"}
-                    </div>
-                    <div>
-                      <div style={{ fontSize: 14, fontWeight: 600 }}>{file.name}</div>
-                      <div style={{ fontSize: 11, color: T.muted }}>
-                        {file.size} • {file.uploadDate} • {file.topics.join(", ")}
-                      </div>
-                    </div>
+                  <div>
+                    <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 2 }}>{item.topic}</div>
+                    <div style={{ fontSize: 12, color: T.muted }}>{item.source}</div>
                   </div>
-                  <div style={{ display: "flex", gap: 8 }}>
-                    <button style={{
-                      background: T.surface,
-                      border: `1px solid ${T.border}`,
-                      borderRadius: 6,
-                      padding: "6px 12px",
-                      color: T.muted,
-                      cursor: "pointer",
-                      fontSize: 11
-                    }}>
-                      🗑️
-                    </button>
-                    <button style={{
-                      background: T.surface,
-                      border: `1px solid ${T.border}`,
-                      borderRadius: 6,
-                      padding: "6px 12px",
-                      color: T.muted,
-                      cursor: "pointer",
-                      fontSize: 11
-                    }}>
-                      🔄
-                    </button>
+                  <div style={{
+                    background: item.source === "Manuell eingegeben" ? T.green + "22" : 
+                               item.source === "Datei Upload" ? T.accent + "22" : T.orange + "22",
+                    color: item.source === "Manuell eingegeben" ? T.green : 
+                           item.source === "Datei Upload" ? T.accent : T.orange,
+                    borderRadius: 99,
+                    padding: "4px 8px",
+                    fontSize: 10,
+                    fontWeight: 600
+                  }}>
+                    {item.source === "Manuell eingegeben" ? "✏️" : 
+                     item.source === "Datei Upload" ? "📁" : "📋"} {item.source}
                   </div>
                 </div>
               ))}
@@ -4494,14 +4426,8 @@ function FileOverview({ exams, setTab, setPreSelectedExam }) {
           )}
         </div>
       )}
-
-      {!exam && (
-        <div style={{ textAlign: "center", padding: "60px 0", color: T.muted }}>
-          <div style={{ fontSize: 64, marginBottom: 16 }}>📁</div>
-          <div style={{ fontSize: 16, marginBottom: 8 }}>Wähle ein Fach aus</div>
-          <div style={{ fontSize: 14 }}>Um die hochgeladenen Dateien zu sehen</div>
-        </div>
-      )}
     </div>
   );
 }
+
+          
