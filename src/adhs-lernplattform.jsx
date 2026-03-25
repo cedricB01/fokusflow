@@ -673,7 +673,7 @@ export default function App() {
         {tab === "karten" && <Flashcards exams={exams} cards={cards} setCards={setCards} addXP={addXP} />}
         {tab === "badges" && <BadgesTab badges={badges} xp={xp} streak={streak} tasks={tasks} onImport={handleDataImport} />}
         {tab === "chat" && <Chat exams={exams} tasks={tasks} />}
-        {tab === "profil" && <Profile user={user} userPlan={userPlan} setUserPlan={setUserPlan} xp={xp} streak={streak} badges={badges} />}
+        {tab === "profil" && <Profile user={user} userPlan={userPlan} setUserPlan={setUserPlan} xp={xp} streak={streak} badges={badges} resetData={resetData} />}
       </main>
 
       {/* Mobile Bottom Navigation */}
@@ -822,6 +822,41 @@ function Dashboard({ tasks, exams, tip, xp, streak, dailyMinutes, usedMinutesTod
                   ))}
                   {(e.topics || []).length > 3 && <span style={{ fontSize: 10, color: T.muted }}>+{e.topics.length - 3} mehr</span>}
                 </div>
+                <div style={{ marginTop: 12 }}>
+                  <button 
+                    onClick={() => {
+                      setTab("upload");
+                      // TODO: Pass selected exam to upload component
+                    }}
+                    style={{
+                      background: T.surface,
+                      border: `1px solid ${T.border}`,
+                      borderRadius: 8,
+                      padding: "6px 12px",
+                      color: T.muted,
+                      cursor: "pointer",
+                      fontSize: 11,
+                      fontWeight: 600,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 6,
+                      transition: "all 0.2s ease"
+                    }}
+                    onMouseEnter={(e) => {
+                      e.target.style.background = T.accentSoft;
+                      e.target.style.borderColor = T.accent;
+                      e.target.style.color = T.accent;
+                    }}
+                    onMouseLeave={(e) => {
+                      e.target.style.background = T.surface;
+                      e.target.style.borderColor = T.border;
+                      e.target.style.color = T.muted;
+                    }}
+                  >
+                    <span>📄</span>
+                    <span>Unterlagen hochladen</span>
+                  </button>
+                </div>
               </div>
             );
           })}
@@ -875,16 +910,30 @@ function Heute({ tasks, exams, cards, setCards, addXP, dailyMinutes, setDailyMin
   const [prepCards, setPrepCards] = useState([]);
   const [showMorgen, setShowMorgen] = useState(false);
 
-  // Tagesplan berechnen
+  // Tagesplan berechnen - erledigte Aufgaben ans Ende verschieben
   let timeLeft = dailyMinutes;
+  const todayTasks = tasks.filter(t => !t.done || t.doneDate !== todayStr());
+  const doneToday = tasks.filter(t => t.done && t.doneDate === todayStr());
+  
+  // Ungeplante nach Priorität sortieren
+  const sortedTasks = [...todayTasks].sort((a, b) => {
+    const aPrio = (a.priority || 1) * 2;
+    const bPrio = (b.priority || 1) * 2;
+    return bPrio - aPrio;
+  });
+  
   const todayPlan = [];
-  for (const t of tasks) {
+  for (const t of sortedTasks) {
     const dur = t.duration || 25;
     if (timeLeft >= dur) { todayPlan.push(t); timeLeft -= dur; }
     if (timeLeft < 15) break;
   }
+  
+  // Erledigte Aufgaben ans Ende anhängen (zum Wiederöffnen)
+  const finalPlan = [...todayPlan, ...doneToday];
+  
   const totalPlanned = todayPlan.reduce((s, t) => s + (t.duration || 25), 0);
-  const todayDoneCount = tasks.filter(t => t.done && t.doneDate === todayStr()).length;
+  const todayDoneCount = doneToday.length;
   const isFlowMode = todayDoneCount >= todayPlan.length && todayPlan.length > 0;
 
   // Morgen-Aufgaben: geplante Tasks für morgen
@@ -935,16 +984,33 @@ NUR reines JSON: {"cards":[{"front":"Frage...","back":"Antwort..."}]}`;
     } catch { setPrepMode("choose"); }
   };
 
-  const startWithCards = (sessionCards) => {
+  const startWithCards = (sessionCards, sessionLength = "short") => {
     const t = prepTask.task;
     const exam = prepTask.exam;
-    // Automatische Zeitberechnung: ~2 min pro Karte, min 10 min, max task.duration
-    const autoMin = sessionCards.length > 0
-      ? Math.min(t.duration || 25, Math.max(10, Math.ceil(sessionCards.length * 2)))
-      : (t.duration || 25);
-    const taskWithDuration = { ...t, duration: autoMin };
+    
+    // ADHS-gerechte Session-Konfiguration
+    const maxCards = 12;
+    const limitedCards = sessionCards.slice(0, maxCards);
+    
+    let sessionDuration;
+    if (sessionLength === "short") {
+      // Kurz-Session: max 25 Minuten, ~2 min pro Karte
+      sessionDuration = Math.min(25, Math.max(10, Math.ceil(limitedCards.length * 2)));
+    } else {
+      // Lang-Session: max 45 Minuten, ~2 min pro Karte
+      sessionDuration = Math.min(45, Math.max(15, Math.ceil(limitedCards.length * 2)));
+    }
+    
+    const taskWithDuration = { ...t, duration: sessionDuration };
     setPrepTask(null); setPrepMode(null); setPrepCards([]);
-    setActiveTask({ task: taskWithDuration, examId: t.examId, examSubject: exam?.subject, examColor: exam?.color, sessionCards });
+    setActiveTask({ 
+      task: taskWithDuration, 
+      examId: t.examId, 
+      examSubject: exam?.subject, 
+      examColor: exam?.color, 
+      sessionCards: limitedCards,
+      sessionLength // Speichern für Verlängerungsoption
+    });
   };
 
   const startWithoutCards = () => {
@@ -982,12 +1048,52 @@ NUR reines JSON: {"cards":[{"front":"Frage...","back":"Antwort..."}]}`;
             <div style={{ background: T.green + "22", border: `1px solid ${T.green}44`, borderRadius: 16, padding: "16px 20px", marginBottom: 20, display: "flex", gap: 12, alignItems: "center" }}>
               <div style={{ fontSize: 28 }}>🃏</div>
               <div>
-                <div style={{ fontWeight: 600, fontSize: 14, color: T.green }}>{prepCards.length} Flashcards bereit!</div>
+                <div style={{ fontWeight: 600, fontSize: 14, color: T.green }}>{Math.min(prepCards.length, 12)} Flashcards bereit!</div>
                 <div style={{ fontSize: 12, color: T.muted, marginTop: 2 }}>
-                  Empfohlene Lernzeit: <strong style={{ color: T.text }}>{Math.min(prepTask.task.duration || 25, Math.max(10, Math.ceil(prepCards.length * 2)))} min</strong> (angepasst auf {prepCards.length} Karten)
+                  ADHS-optimiert: max 12 Karten pro Session
                 </div>
               </div>
             </div>
+            
+            {/* Session-Länge Auswahl */}
+            <div style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 12, padding: 16, marginBottom: 20 }}>
+              <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 12 }}>Session-Länge wählen</div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                <button 
+                  onClick={() => startWithCards(prepCards, "short")}
+                  style={{
+                    background: T.accentSoft,
+                    border: `1px solid ${T.accent}44`,
+                    borderRadius: 10,
+                    padding: "12px 16px",
+                    color: T.text,
+                    cursor: "pointer",
+                    textAlign: "center"
+                  }}
+                >
+                  <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 4 }}>⚡ Kurz</div>
+                  <div style={{ fontSize: 11, color: T.muted }}>10-25 Min</div>
+                  <div style={{ fontSize: 10, color: T.accent, marginTop: 4 }}>ADHS-optimiert</div>
+                </button>
+                <button 
+                  onClick={() => startWithCards(prepCards, "long")}
+                  style={{
+                    background: T.surface,
+                    border: `1px solid ${T.border}`,
+                    borderRadius: 10,
+                    padding: "12px 16px",
+                    color: T.muted,
+                    cursor: "pointer",
+                    textAlign: "center"
+                  }}
+                >
+                  <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 4 }}>📚 Lang</div>
+                  <div style={{ fontSize: 11, color: T.muted }}>15-45 Min</div>
+                  <div style={{ fontSize: 10, color: T.muted, marginTop: 4 }}>Intensiv</div>
+                </button>
+              </div>
+            </div>
+            
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 20 }}>
               {prepCards.slice(0, 4).map(c => (
                 <div key={c.id} style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 8, padding: "6px 12px", fontSize: 11, color: T.muted, maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
@@ -996,15 +1102,12 @@ NUR reines JSON: {"cards":[{"front":"Frage...","back":"Antwort..."}]}`;
               ))}
               {prepCards.length > 4 && <div style={{ fontSize: 11, color: T.muted, padding: "6px 0" }}>+{prepCards.length - 4} mehr...</div>}
             </div>
-            <Btn onClick={() => startWithCards(prepCards)} style={{ width: "100%", padding: "14px" }}>
-              ▶ Session starten mit Flashcards
-            </Btn>
           </div>
         )}
 
         {prepMode === "choose" && (() => {
-                const topicSpecific = (cards || []).filter(c => c.examId === t.examId && c.topic === t.text);
-          const hasTopicCards = topicSpecific.length >= 3;
+          const topicSpecific = (cards || []).filter(c => c.examId === t.examId && c.topic === t.text);
+          const hasTopicCards = topicSpecific.length >= 1; // Schon 1 Karte reicht
           const existing = (cards || []).filter(c => c.examId === t.examId);
           
           return (
@@ -1015,26 +1118,39 @@ NUR reines JSON: {"cards":[{"front":"Frage...","back":"Antwort..."}]}`;
                   Lerne während des Timers mit Karten und werde danach abgefragt.
                 </div>
 
-                {/* Themenspezifische Karten – beste Option */}
+                {/* Themenspezifische Karten - NUR diese Option */}
                 {hasTopicCards && (
-                  <button onClick={() => startWithCards(topicSpecific)}
-                    style={{ width: "100%", background: T.green + "22", border: `1px solid ${T.green}44`, borderRadius: 12, padding: "14px 18px", color: T.text, cursor: "pointer", textAlign: "left", marginBottom: 10 }}>
-                    <div style={{ fontWeight: 600, fontSize: 14 }}>✅ Gespeicherte Karten für dieses Thema</div>
-                    <div style={{ fontSize: 12, color: T.muted, marginTop: 3 }}>
-                      {topicSpecific.length} Karten für „{t.text}" – keine neuen Tokens nötig
+                  <div style={{ marginBottom: 10 }}>
+                    <button onClick={() => startWithCards(topicSpecific, "short")}
+                      style={{ width: "100%", background: T.green + "22", border: `1px solid ${T.green}44`, borderRadius: 12, padding: "14px 18px", color: T.text, cursor: "pointer", textAlign: "left", marginBottom: 8 }}>
+                      <div style={{ fontWeight: 600, fontSize: 14 }}>✅ Gespeicherte Karten für dieses Thema</div>
+                      <div style={{ fontSize: 12, color: T.muted, marginTop: 3 }}>
+                        {Math.min(topicSpecific.length, 12)} Karten für „{t.text}" – themenspezifisch
+                      </div>
+                    </button>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                      <button onClick={() => startWithCards(topicSpecific, "short")}
+                        style={{ background: T.accentSoft, border: `1px solid ${T.accent}44`, borderRadius: 8, padding: "8px 12px", color: T.text, cursor: "pointer", fontSize: 12 }}>
+                        ⚡ Kurz (10-25min)
+                      </button>
+                      <button onClick={() => startWithCards(topicSpecific, "long")}
+                        style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 8, padding: "8px 12px", color: T.muted, cursor: "pointer", fontSize: 12 }}>
+                        📚 Lang (15-45min)
+                      </button>
                     </div>
-                  </button>
+                  </div>
                 )}
 
-                {/* Alle Fach-Karten wenn keine themenspezifischen */}
-                {!hasTopicCards && existing.length > 0 && (
-                  <button onClick={() => startWithCards(existing)}
-                    style={{ width: "100%", background: T.accentSoft, border: `1px solid ${T.accent}44`, borderRadius: 12, padding: "14px 18px", color: T.text, cursor: "pointer", textAlign: "left", marginBottom: 10 }}>
-                    <div style={{ fontWeight: 600, fontSize: 14 }}>🃏 Vorhandene Karten für {exam?.subject} nutzen</div>
-                    <div style={{ fontSize: 12, color: T.muted, marginTop: 3 }}>
-                      {existing.length} Karten aus dem Fach – kein API-Aufruf nötig
+                {/* KEINE themenspezifischen Karten - Nur KI-Generierung */}
+                {!hasTopicCards && (
+                  <div style={{ marginBottom: 10 }}>
+                    <div style={{ background: T.accentSoft, border: `1px solid ${T.accent}44`, borderRadius: 12, padding: "14px 18px", textAlign: "left", marginBottom: 8 }}>
+                      <div style={{ fontWeight: 600, fontSize: 14 }}>🤖 Keine Karten für dieses Thema</div>
+                      <div style={{ fontSize: 12, color: T.muted, marginTop: 3 }}>
+                        Lerneinheit „{t.text}" hat noch keine Flashcards
+                      </div>
                     </div>
-                  </button>
+                  </div>
                 )}
 
                 {/* KI neue Karten generieren */}
@@ -1113,7 +1229,7 @@ NUR reines JSON: {"cards":[{"front":"Frage...","back":"Antwort..."}]}`;
         </div>
       </div>
 
-      {todayPlan.length === 0 ? (
+      {finalPlan.length === 0 ? (
         <EmptyState icon="🎉" text="Alle Aufgaben erledigt oder noch kein Lernplan erstellt! Geh zu 'Lernplan' um loszulegen." />
       ) : (
         <>
@@ -1124,11 +1240,11 @@ NUR reines JSON: {"cards":[{"front":"Frage...","back":"Antwort..."}]}`;
                 {todayDoneCount === 0 ? "Heute startest du mit:" : `${todayDoneCount} von ${todayPlan.length} erledigt`}
               </div>
               <div style={{ fontSize: 12, color: T.muted, marginTop: 2 }}>
-                {todayPlan.length - todayDoneCount} Aufgaben · {totalPlanned} min Lernzeit
+                {finalPlan.length - todayDoneCount} Aufgaben · {totalPlanned} min Lernzeit
               </div>
             </div>
             <div style={{ display: "flex", gap: 4 }}>
-              {todayPlan.map((_, i) => (
+              {finalPlan.map((_, i) => (
                 <div key={i} style={{ width: 10, height: 10, borderRadius: "50%", background: i < todayDoneCount ? T.green : T.border, transition: "background 0.3s" }} />
               ))}
             </div>
@@ -1136,35 +1252,74 @@ NUR reines JSON: {"cards":[{"front":"Frage...","back":"Antwort..."}]}`;
 
           {/* Aufgabenliste */}
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            {todayPlan.map((t, idx) => {
+            {finalPlan.map((t, idx) => {
               const exam = exams.find(e => e.id === t.examId);
-              const isFirst = idx === 0 && todayDoneCount === idx;
+              const isDone = t.done && t.doneDate === todayStr();
+              const isFirst = idx === 0 && !isDone && todayDoneCount === idx;
               const prio = idx < 2 ? "🔴" : idx < 5 ? "🟡" : "🟢";
               const hasCards = (cards || []).filter(c => c.examId === t.examId).length;
 
               return (
                 <div key={t.id} style={{
-                  background: T.card, border: `1px solid ${isFirst ? T.accent : T.border}`,
-                  borderRadius: 14, padding: isMobile ? "14px" : "16px 20px",
+                  background: isDone ? T.surface : T.card, 
+                  border: `1px solid ${isFirst ? T.accent : isDone ? T.border : T.border}`,
+                  borderRadius: 14, 
+                  padding: isMobile ? "14px" : "16px 20px",
                   borderLeft: `4px solid ${exam?.color || T.accent}`,
                   animation: "fadeUp 0.3s ease",
                   boxShadow: isFirst ? `0 0 20px ${T.accent}22` : "none",
+                  opacity: isDone ? 0.7 : 1,
+                  position: "relative"
                 }}>
+                  {isDone && (
+                    <div style={{ 
+                      position: "absolute", 
+                      top: 12, 
+                      right: 12, 
+                      width: 24, 
+                      height: 24, 
+                      borderRadius: "50%", 
+                      background: T.green, 
+                      display: "flex", 
+                      alignItems: "center", 
+                      justifyContent: "center",
+                      color: "white",
+                      fontSize: 14,
+                      fontWeight: "bold"
+                    }}>
+                      ✓
+                    </div>
+                  )}
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 4, flexWrap: "wrap" }}>
                         <span style={{ fontSize: 11 }}>{prio}</span>
                         <span style={{ fontSize: 11, background: (exam?.color || T.accent) + "22", color: exam?.color || T.accent, borderRadius: 6, padding: "1px 8px" }}>{exam?.subject}</span>
-                        <span style={{ fontSize: 11, color: T.muted }}>⏱ {t.duration || 25} min</span>
-                        {hasCards > 0 && <span style={{ fontSize: 11, color: T.green }}>🃏 {hasCards}</span>}
+                        <span style={{ fontSize: 11, color: T.muted }}> {t.duration || 25} min</span>
+                        {hasCards > 0 && <span style={{ fontSize: 11, color: T.green }}> {hasCards}</span>}
+                        {isDone && <span style={{ fontSize: 11, color: T.green, fontWeight: 600 }}>ERLEDIGT</span>}
                       </div>
-                      <div style={{ fontSize: 15, fontWeight: 600, marginBottom: isFirst ? 8 : 0 }}>{t.text}</div>
-                      {isFirst && (
-                        <div style={{ fontSize: 11, color: T.accent, fontWeight: 600 }}>👆 Als nächstes starten</div>
+                      <div style={{ fontSize: 15, fontWeight: 600, marginBottom: isFirst ? 8 : 0, textDecoration: isDone ? "line-through" : "none" }}>{t.text}</div>
+                      {isFirst && !isDone && (
+                        <div style={{ fontSize: 11, color: T.accent, fontWeight: 600 }}> Als nächstes starten</div>
+                      )}
+                      {isDone && (
+                        <div style={{ fontSize: 11, color: T.muted, marginTop: 4 }}>Erledigt um {t.completedAt || "unbekannt"}</div>
                       )}
                     </div>
                     <button onClick={() => openPrep(t, exam)}
-                      style={{ background: isFirst ? `linear-gradient(135deg, ${T.accent}, #9f8ffa)` : T.surface, border: isFirst ? "none" : `1px solid ${T.border}`, borderRadius: 10, padding: isMobile ? "10px 14px" : "10px 20px", color: isFirst ? "white" : T.muted, cursor: "pointer", fontSize: 13, fontWeight: 600, flexShrink: 0, animation: isFirst ? "bounce 2s ease infinite" : "none" }}>
+                      style={{ 
+                        background: isDone ? T.border : (isFirst ? `linear-gradient(135deg, ${T.accent}, #9f8ffa)` : T.surface), 
+                        border: isFirst ? "none" : `1px solid ${T.border}`, 
+                        borderRadius: 10, 
+                        padding: isMobile ? "10px 14px" : "10px 20px", 
+                        color: isDone ? T.muted : (isFirst ? "white" : T.muted), 
+                        cursor: "pointer", 
+                        fontSize: 13, 
+                        fontWeight: 600, 
+                        flexShrink: 0, 
+                        animation: isFirst ? "bounce 2s ease infinite" : "none" 
+                      }}>
                       ▶
                     </button>
                   </div>
@@ -1265,9 +1420,9 @@ function LernModus({ task, exams, cards, setCards, onComplete, onCancel, addXP }
   const startQuiz = async () => {
     setPhase("quiz");
     setQuizLoading(true);
-    const prompt = `Erstelle 3 kurze Verständnisfragen für das Thema "${task.task?.text}" aus "${exam?.subject}".
+    const prompt = `Erstelle 5 kurze Verständnisfragen für das Thema "${task.task?.text}" aus "${exam?.subject}".
 NUR reines JSON: {"questions":[{"q":"...","options":["...","...","...","..."],"correct":0,"explanation":"..."}]}
-Max 3 Fragen, 4 Optionen, correct = Index der richtigen Antwort.`;
+Max 5 Fragen, 4 Optionen, correct = Index der richtigen Antwort.`;
     try {
       const raw = await callClaude([{ role: "user", content: prompt }]);
       const parsed = safeParseJSON(raw);
@@ -1435,8 +1590,8 @@ Max 3 Fragen, 4 Optionen, correct = Index der richtigen Antwort.`;
             <div style={{ fontFamily: T.font, fontWeight: 700, fontSize: 18, marginBottom: 6 }}>🧠 Abschluss-Abfrage</div>
             <div style={{ fontSize: 13, color: T.muted, marginBottom: 24 }}>
               {sessionCards.length > 0
-                ? `Flashcard-Ergebnis: ${fcResults.filter(Boolean).length}/${sessionCards.length} · Jetzt noch 3 Fragen zum Thema`
-                : "Beantworte 3 Fragen – dein Lernplan passt sich an!"}
+                ? `Flashcard-Ergebnis: ${fcResults.filter(Boolean).length}/${sessionCards.length} · Jetzt noch 5 Fragen zum Thema`
+                : "Beantworte 5 Fragen – dein Lernplan passt sich an!"}
             </div>
 
             {quizLoading && (
@@ -3358,7 +3513,7 @@ function EmptyState({ icon, text }) {
 // ════════════════════════════════════════════════
 // PROFIL COMPONENT
 // ════════════════════════════════════════════════
-function Profile({ user, userPlan, setUserPlan, xp, streak, badges }) {
+function Profile({ user, userPlan, setUserPlan, xp, streak, badges, resetData }) {
   const [editingPlan, setEditingPlan] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState(userPlan);
 
@@ -3503,6 +3658,43 @@ function Profile({ user, userPlan, setUserPlan, xp, streak, badges }) {
           <div style={{ fontSize: 20, fontWeight: 700, color: T.green }}>{badges.length}</div>
           <div style={{ fontSize: 12, color: T.muted }}>Badges</div>
         </div>
+      </div>
+
+      {/* Account Actions */}
+      <div style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 16, padding: 24 }}>
+        <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>Account</div>
+        
+        <button 
+          onClick={async () => { await signOut(); resetData(); }}
+          style={{
+            width: "100%",
+            background: "transparent",
+            border: `1px solid ${T.border}`,
+            borderRadius: 10,
+            padding: "12px 16px",
+            color: T.muted,
+            cursor: "pointer",
+            fontSize: 14,
+            textAlign: "left",
+            display: "flex",
+            alignItems: "center",
+            gap: 12,
+            transition: "all 0.2s ease"
+          }}
+          onMouseEnter={(e) => {
+            e.target.style.background = T.surface;
+            e.target.style.borderColor = T.red;
+            e.target.style.color = T.red;
+          }}
+          onMouseLeave={(e) => {
+            e.target.style.background = "transparent";
+            e.target.style.borderColor = T.border;
+            e.target.style.color = T.muted;
+          }}
+        >
+          <span style={{ fontSize: 16 }}>↩</span>
+          <span>Abmelden</span>
+        </button>
       </div>
 
       {/* Plan-Wechsel Modal */}
