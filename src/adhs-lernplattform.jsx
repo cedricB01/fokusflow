@@ -889,8 +889,6 @@ function Dashboard({ tasks, exams, tip, xp, streak, dailyMinutes, usedMinutesTod
   const sortedExams = [...exams].sort((a, b) => calcPriority(b) - calcPriority(a));
   
   // Smarter Tagesplan: nur Tasks zählen, die tatsächlich in die Zeit passen
-  let timeLeft = dailyMinutes;
-  const todayTasks = [];
   const todayDone = tasks.filter(t => t.done && t.doneDate === todayStr()).length;
   
   // Update temp states when dailyMinutes changes
