@@ -8,9 +8,25 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) return res.status(500).json({ error: 'API key not configured' });
+  
+  // Debug: Environment Variable Status
+  console.log('API Status:', {
+    hasApiKey: !!apiKey,
+    apiKeyLength: apiKey?.length || 0,
+    requestMethod: req.method,
+    timestamp: new Date().toISOString()
+  });
+  
+  if (!apiKey) {
+    console.error('ANTHROPIC_API_KEY not configured in Vercel');
+    return res.status(500).json({ 
+      error: 'API key not configured',
+      debug: 'ANTHROPIC_API_KEY environment variable is missing'
+    });
+  }
 
   try {
+    console.log('Calling Claude API...');
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
@@ -22,8 +38,11 @@ export default async function handler(req, res) {
     });
 
     const data = await response.json();
+    console.log('Claude API response status:', response.status);
+    
     return res.status(response.status).json(data);
   } catch (err) {
+    console.error('Claude API error:', err.message);
     return res.status(500).json({ error: err.message });
   }
 }
