@@ -579,16 +579,70 @@ export default function App() {
     setActiveTask(null);
   };
 
-  // Heutige Tasks: sortiert nach Priorität, gefiltert auf heute
-  const todayTasks = tasks
-    .filter(t => !t.done && !t.doneDate && (!t.plannedDate || t.plannedDate <= todayStr()))
-    .sort((a, b) => {
-      const examA = exams.find(e => e.id === a.examId);
-      const examB = exams.find(e => e.id === b.examId);
-      const prioA = (examA ? calcPriority(examA) : 0) * (a.priority || 1);
-      const prioB = (examB ? calcPriority(examB) : 0) * (b.priority || 1);
-      return prioB - prioA;
-    });
+  // Heutige Tasks: gleiche Logik wie Dashboard und Heute-Tab
+  const unplannedNavTasks = tasks.filter(t => !t.doneDate && (!t.plannedDate || t.plannedDate <= todayStr()));
+  const sortedNavTasks = [...unplannedNavTasks].sort((a, b) => {
+    const examA = exams.find(e => e.id === a.examId);
+    const examB = exams.find(e => e.id === b.examId);
+    const prioA = (examA ? calcPriority(examA) : 0) * (a.priority || 1);
+    const prioB = (examB ? calcPriority(examB) : 0) * (b.priority || 1);
+    return prioB - prioA;
+  });
+  
+  // Exakt die gleiche Planungslogik wie Dashboard
+  const todayPlan = [];
+  let remainingTime = dailyMinutes;
+  let taskCount = 0;
+  
+  for (const t of sortedNavTasks) {
+    const originalDuration = t.duration || 25;
+    
+    if (originalDuration > 25) {
+      const blocksNeeded = Math.ceil(originalDuration / 25);
+      for (let i = 0; i < blocksNeeded; i++) {
+        const needsPause = taskCount > 0;
+        const totalTimeNeeded = 25 + (needsPause ? 5 : 0);
+        
+        if (remainingTime >= totalTimeNeeded) {
+          const blockTask = {
+            ...t,
+            duration: 25,
+            text: i === 0 ? t.text : `${t.text} (${i + 1}/${blocksNeeded})`,
+            isPartOfLargerTask: true,
+            originalTaskId: t.id,
+            blockIndex: i,
+            totalBlocks: blocksNeeded
+          };
+          todayPlan.push(blockTask);
+          remainingTime -= 25;
+          taskCount++;
+          
+          if (needsPause) {
+            remainingTime -= 5;
+          }
+        } else {
+          break;
+        }
+      }
+    } else {
+      const needsPause = taskCount > 0;
+      const totalTimeNeeded = originalDuration + (needsPause ? 5 : 0);
+      
+      if (remainingTime >= totalTimeNeeded) {
+        todayPlan.push({ ...t, duration: originalDuration });
+        remainingTime -= originalDuration;
+        taskCount++;
+        
+        if (needsPause) {
+          remainingTime -= 5;
+        }
+      }
+    }
+    
+    if (remainingTime < 25) break;
+  }
+  
+  const todayTasks = todayPlan;
 
   // Wie viele Minuten heute schon geplant
   const usedMinutesToday = todayTasks.slice(0, 20).reduce((sum, t) => sum + (t.duration || 25), 0);
@@ -852,18 +906,64 @@ function Dashboard({ tasks, exams, tip, xp, streak, dailyMinutes, usedMinutesTod
     return bPrio - aPrio;
   });
   
+  // Exakt die gleiche Logik wie im Heute-Tab
+  const todayPlan = [];
+  let remainingTime = dailyMinutes;
+  let taskCount = 0;
+  
   for (const t of sortedTasks) {
-    const dur = t.duration || 25;
-    if (timeLeft >= dur) { 
-      todayTasks.push(t); 
-      timeLeft -= dur; 
+    const originalDuration = t.duration || 25;
+    
+    // Task aufteilen wenn länger als 25 Minuten
+    if (originalDuration > 25) {
+      const blocksNeeded = Math.ceil(originalDuration / 25);
+      for (let i = 0; i < blocksNeeded; i++) {
+        const needsPause = taskCount > 0;
+        const totalTimeNeeded = 25 + (needsPause ? 5 : 0);
+        
+        if (remainingTime >= totalTimeNeeded) {
+          const blockTask = {
+            ...t,
+            duration: 25,
+            text: i === 0 ? t.text : `${t.text} (${i + 1}/${blocksNeeded})`,
+            isPartOfLargerTask: true,
+            originalTaskId: t.id,
+            blockIndex: i,
+            totalBlocks: blocksNeeded
+          };
+          todayPlan.push(blockTask);
+          remainingTime -= 25;
+          taskCount++;
+          
+          if (needsPause) {
+            remainingTime -= 5;
+          }
+        } else {
+          break;
+        }
+      }
+    } else {
+      // Normale Task <= 25 Minuten
+      const needsPause = taskCount > 0;
+      const totalTimeNeeded = originalDuration + (needsPause ? 5 : 0);
+      
+      if (remainingTime >= totalTimeNeeded) {
+        todayPlan.push({ ...t, duration: originalDuration });
+        remainingTime -= originalDuration;
+        taskCount++;
+        
+        if (needsPause) {
+          remainingTime -= 5;
+        }
+      }
     }
-    if (timeLeft < 15) break;
+    
+    if (remainingTime < 25) break;
   }
   
-  const todayTotal = todayTasks.length + todayDone;
+  const todayTotal = todayPlan.length + todayDone;
   const todayPct = todayTotal ? Math.round((todayDone / todayTotal) * 100) : 0;
-  const plannedMinutesToday = todayTasks.reduce((s, t) => s + (t.duration || 25), 0);
+  const plannedMinutesToday = todayPlan.reduce((s, t) => s + (t.duration || 25), 0);
 
   return (
     <div style={{ padding: isMobile ? 16 : 32, animation: "fadeUp 0.4s ease" }}>
@@ -1174,11 +1274,7 @@ function Heute({ tasks, exams, cards, setCards, addXP, dailyMinutes, setDailyMin
 
   // eslint-disable-next-line no-unused-vars
   // Tagesplan berechnen - erledigte Aufgaben ans Ende verschieben
-  const todayTasks = tasks.filter(t => !t.done || t.doneDate !== todayStr());
-  const doneToday = tasks.filter(t => t.done && t.doneDate === todayStr());
-  
-  // Ungeplante nach Priorität sortieren
-  const sortedTasks = [...todayTasks].sort((a, b) => {
+  const sortedTasks = tasks.filter(t => !t.done || t.doneDate !== todayStr()).sort((a, b) => {
     const aPrio = (a.priority || 1) * 2;
     const bPrio = (b.priority || 1) * 2;
     return bPrio - aPrio;
@@ -2678,29 +2774,67 @@ function Kalender({ exams, tasks, setTasks, dailyMinutes, addXP, semesterPlan, s
     const isTodayDate = dateStr === todayStr();
     
     if (isTodayDate) {
-      // Gleiche Logik wie im Heute-Tab
-      const todayTasks = tasks.filter(t => !t.done || t.doneDate !== todayStr());
-      const sortedTasks = [...todayTasks].sort((a, b) => {
-        const aPrio = (a.priority || 1) * 2;
-        const bPrio = (b.priority || 1) * 2;
-        return bPrio - aPrio;
-      });
+      // Exakt die gleiche Logik wie im Heute-Tab
+      const todayTasks = tasks
+        .filter(t => !t.done || t.doneDate !== todayStr())
+        .sort((a, b) => {
+          const aPrio = (a.priority || 1) * 2;
+          const bPrio = (b.priority || 1) * 2;
+          return bPrio - aPrio;
+        });
       
       const todayPlan = [];
       let remainingTime = dailyMinutes;
       let taskCount = 0;
       
-      for (const t of sortedTasks) {
-        const dur = Math.min(t.duration || 25, 25);
-        if (remainingTime >= dur) { 
-          todayPlan.push(t); 
-          remainingTime -= dur;
-          taskCount++;
-          if (taskCount < sortedTasks.length && remainingTime >= 5) {
-            remainingTime -= 5;
+      for (const t of todayTasks) {
+        const originalDuration = t.duration || 25;
+        
+        // Task aufteilen wenn länger als 25 Minuten
+        if (originalDuration > 25) {
+          const blocksNeeded = Math.ceil(originalDuration / 25);
+          for (let i = 0; i < blocksNeeded; i++) {
+            const needsPause = taskCount > 0;
+            const totalTimeNeeded = 25 + (needsPause ? 5 : 0);
+            
+            if (remainingTime >= totalTimeNeeded) {
+              const blockTask = {
+                ...t,
+                duration: 25,
+                text: i === 0 ? t.text : `${t.text} (${i + 1}/${blocksNeeded})`,
+                isPartOfLargerTask: true,
+                originalTaskId: t.id,
+                blockIndex: i,
+                totalBlocks: blocksNeeded
+              };
+              todayPlan.push(blockTask);
+              remainingTime -= 25;
+              taskCount++;
+              
+              if (needsPause) {
+                remainingTime -= 5;
+              }
+            } else {
+              break;
+            }
+          }
+        } else {
+          // Normale Task <= 25 Minuten
+          const needsPause = taskCount > 0;
+          const totalTimeNeeded = originalDuration + (needsPause ? 5 : 0);
+          
+          if (remainingTime >= totalTimeNeeded) {
+            todayPlan.push({ ...t, duration: originalDuration });
+            remainingTime -= originalDuration;
+            taskCount++;
+            
+            if (needsPause) {
+              remainingTime -= 5;
+            }
           }
         }
-        if (remainingTime < 15) break;
+        
+        if (remainingTime < 25) break;
       }
       
       return todayPlan.map(t => {
