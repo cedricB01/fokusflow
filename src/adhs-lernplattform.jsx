@@ -950,7 +950,7 @@ function Dashboard({ tasks, exams, tip, xp, streak, dailyMinutes, usedMinutesTod
               />
               <span style={{ fontSize: isMobile ? 16 : 26, fontWeight: 800, color: T.orange }}>m</span>
             </div>
-          ) : `${Math.min(plannedMinutesToday, dailyMinutes)}m`} 
+          ) : `${Math.floor(Math.min(plannedMinutesToday, dailyMinutes) / 60)}h ${Math.min(plannedMinutesToday, dailyMinutes) % 60}m`} 
           sub={editingTime ? (
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <button 
@@ -1126,13 +1126,17 @@ function Heute({ tasks, exams, cards, setCards, addXP, dailyMinutes, setDailyMin
   for (const t of sortedTasks) {
     const dur = Math.min(t.duration || 25, 25); // Max 25 Minuten pro Aufgabe
     
-    if (remainingTime >= dur) { 
+    // Prüfen ob Aufgabe + Pause in die verbleibende Zeit passt
+    const needsPause = taskCount > 0; // Nach jeder Aufgabe außer der ersten
+    const totalTimeNeeded = dur + (needsPause ? 5 : 0);
+    
+    if (remainingTime >= totalTimeNeeded) { 
       todayPlan.push(t); 
       remainingTime -= dur;
       taskCount++;
       
-      // Nach jeder Aufgabe eine Pause einplanen (außer bei letzter oder wenn keine Zeit mehr)
-      if (taskCount < sortedTasks.length && remainingTime >= 5) {
+      // Pause einplanen (außer bei letzter oder wenn keine Zeit mehr)
+      if (needsPause && remainingTime >= 5) {
         remainingTime -= 5; // 5 Minuten Pause
       }
     }
@@ -2101,40 +2105,45 @@ function Upload({ exams, addXP, onAnalysisComplete, preSelectedExam = "" }) {
   };
 
   const analyze = async () => {
-    const contentData = await getContent();
-    if (!contentData && !manualTopics) return;
-    const hasContent = contentData?.type === "images"
-      ? contentData.files.length > 0
-      : contentData?.content && contentData.content.trim().length >= 50;
-    if (mode !== "manuell" && !hasContent) {
-      setResult({ error: true, errorMsg: "Die Datei konnte nicht ausgelesen werden. Lade ein Foto der Klausur hoch (JPG/PNG) oder füge den Text direkt ein." });
-      return;
-    }
-    setLoading(true); setResult(null);
-    const exam = exams.find(e => e.id === selectedExam);
-    const textContent = contentData?.type === "text" ? (contentData.content || "").slice(0, 2500) : "[Bild wird direkt analysiert]";
-    const isImage = contentData?.type === "images";
-
-    const prompts = {
-      skript: `Du bist ein ADHS-Lernexperte. Analysiere ${isImage ? "dieses Lernmaterial" : "folgenden Lerninhalt"} und extrahiere 5 Schwerpunkte.
-NUR reines JSON ohne Markdown:
-{"topics":[{"name":"...","minutes":20,"difficulty":3,"tip":"..."}],"summary":"...","adhsTip":"..."}
-Fach: ${exam?.subject || "Unbekannt"}
-${!isImage ? `Inhalt: ${textContent}` : ""}`,
-      altklausur: `Du bist ein ADHS-Lernexperte. Analysiere ${isImage ? "diese Altklausur/Aufgabenblätter" : "folgende Altklausur"}.
-Erkenne: Aufgabentypen, Häufigkeiten, Punkteverteilung, typische Fragestellungen. Auch handschriftliche Notizen beachten.
-NUR reines JSON ohne Markdown:
-{"topics":[{"name":"...","minutes":20,"difficulty":3,"tip":"...","frequency":"häufig","points":"ca. X Pkt"}],"summary":"...","adhsTip":"...","examPattern":"...","topPriority":"..."}
-Fach: ${exam?.subject || "Unbekannt"}
-${!isImage ? `Inhalt: ${textContent}` : ""}`,
-      manuell: `ADHS-Lernplan für Themen. NUR reines JSON ohne Markdown:
-{"topics":[{"name":"...","minutes":20,"difficulty":3,"tip":"..."}],"summary":"...","adhsTip":"..."}
-Themen: ${manualTopics}`,
-    };
-
     try {
+      const contentData = await getContent();
+      if (!contentData && !manualTopics) return;
+      const hasContent = contentData?.type === "images"
+        ? contentData.files.length > 0
+        : contentData?.content && contentData.content.trim().length >= 50;
+      if (mode !== "manuell" && !hasContent) {
+        setResult({ error: true, errorMsg: "Die Datei konnte nicht ausgelesen werden. Lade ein Foto der Klausur hoch (JPG/PNG) oder füge den Text direkt ein." });
+        return;
+      }
+      setLoading(true); setResult(null);
+      const exam = exams.find(e => e.id === selectedExam);
+      const textContent = contentData?.type === "text" ? (contentData.content || "").slice(0, 2500) : "[Bild wird direkt analysiert]";
+      const isImage = contentData?.type === "images";
+
+      const prompts = {
+        skript: `Du bist ein ADHS-Lernexperte. Analysiere ${isImage ? "dieses Lernmaterial" : "folgenden Lerninhalt"} und extrahiere 5 Schwerpunkte.
+NUR reines JSON ohne Markdown:
+{"topics":[{"name":"...","minutes":20,"difficulty":3,"tip":"..."}],"summary":"...","adhsTip":"..."}
+Fach: ${exam?.subject || "Unbekannt"}
+Inhalt: ${textContent}`,
+        altklausur: `Du bist ein ADHS-Lernexperte. Analysiere ${isImage ? "diese Altklausur" : "folgenden Klausurtext"} und extrahiere Aufbau, Schwerpunkte und Top-Priorität.
+NUR reines JSON ohne Markdown:
+{"examPattern":"...","topPriority":"...","topics":[{"name":"...","minutes":25,"difficulty":4,"tip":"..."}],"summary":"...","adhsTip":"..."}
+Fach: ${exam?.subject || "Unbekannt"}
+Inhalt: ${textContent}`,
+        manuell: `Erstelle aus diesen Themen einen ADHS-gerechten Lernplan: ${manualTopics}.
+NUR reines JSON ohne Markdown:
+{"topics":[{"name":"...","minutes":20,"difficulty":3,"tip":"..."}],"summary":"...","adhsTip":"..."}
+Fach: ${exam?.subject || "Unbekannt"}`
+      };
+
       const messages = await buildMessages(prompts[mode], contentData);
       const raw = await callClaude(messages);
+      
+      if (raw.includes("FEHLER: Backend nicht erreichbar")) {
+        throw new Error("Backend nicht erreichbar");
+      }
+      
       const parsed = safeParseJSON(raw);
       setResult({ ...parsed, mode });
       addXP(mode === "altklausur" ? 40 : 30);
@@ -2143,7 +2152,11 @@ Themen: ${manualTopics}`,
       }
     } catch (err) {
       console.error("Analyse Fehler:", err);
-      setResult({ error: true });
+      if (err.message === "Backend nicht erreichbar") {
+        setResult({ error: true, errorMsg: "Das Backend ist nicht erreichbar. Bitte starten Sie das Backend oder kontaktieren Sie den Support." });
+      } else {
+        setResult({ error: true, errorMsg: "Ein Fehler ist aufgetreten. Bitte erneut versuchen." });
+      }
     }
     setLoading(false);
   };
