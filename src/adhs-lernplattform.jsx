@@ -1280,27 +1280,9 @@ function Dashboard({ tasks, exams, tip, xp, streak, dailyMinutes, usedMinutesTod
   );
 }
 
-// Test API Connection
-async function testAPI() {
-  try {
-    const res = await fetch("/api/test", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ test: true }),
-    });
-    const data = await res.json();
-    console.log("API Test Result:", data);
-    return data;
-  } catch (error) {
-    console.error("API Test Error:", error);
-    return null;
-  }
-}
-
-// Test API beim Laden der App
-useEffect(() => {
-  testAPI();
-}, []);
+// ════════════════════════════════════════════════
+// THEME & STYLING
+// ════════════════════════════════════════════════
 
 function Heute({ tasks, exams, cards, setCards, addXP, dailyMinutes, setDailyMinutes, setActiveTask }) {
   const isMobile = useIsMobile();
@@ -1310,6 +1292,28 @@ function Heute({ tasks, exams, cards, setCards, addXP, dailyMinutes, setDailyMin
   const [prepMode, setPrepMode] = useState(null);
   const [prepCards, setPrepCards] = useState([]);
   const [showMorgen, setShowMorgen] = useState(false);
+
+  // Test API Connection
+  async function testAPI() {
+    try {
+      const res = await fetch("/api/test", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ test: true }),
+      });
+      const data = await res.json();
+      console.log("API Test Result:", data);
+      return data;
+    } catch (error) {
+      console.error("API Test Error:", error);
+      return null;
+    }
+  }
+
+  // Test API beim Laden der Component
+  useEffect(() => {
+    testAPI();
+  }, []);
 
   // Update temp state when dailyMinutes changes
   useEffect(() => {
