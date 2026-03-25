@@ -1140,11 +1140,29 @@ function Dashboard({ tasks, exams, tip, xp, streak, dailyMinutes, usedMinutesTod
 function Heute({ tasks, exams, cards, setCards, addXP, dailyMinutes, setDailyMinutes, setActiveTask }) {
   const isMobile = useIsMobile();
   const [editingTime, setEditingTime] = useState(false);
-  const [tempMin, setTempMin] = useState(dailyMinutes);
+  const [tempHours, setTempHours] = useState(Math.floor(dailyMinutes / 60));
   const [prepTask, setPrepTask] = useState(null);
   const [prepMode, setPrepMode] = useState(null);
   const [prepCards, setPrepCards] = useState([]);
   const [showMorgen, setShowMorgen] = useState(false);
+
+  // Update temp state when dailyMinutes changes
+  useEffect(() => {
+    setTempHours(Math.floor(dailyMinutes / 60));
+  }, [dailyMinutes]);
+
+  // Automatische Lernplan-Anpassung bei Änderungen
+  useEffect(() => {
+    // Lernplan automatisch neu berechnen wenn:
+    // - dailyMinutes sich ändert
+    // - tasks sich ändern (erledigt/hinzugefügt)
+    // - Prioritäten sich ändern
+    const timer = setTimeout(() => {
+      // Die todayPlan Berechnung wird automatisch durch die Abhängigkeiten neu ausgeführt
+    }, 500);
+    
+    return () => clearTimeout(timer);
+  }, [dailyMinutes, tasks]);
 
   // eslint-disable-next-line no-unused-vars
   // Tagesplan berechnen - erledigte Aufgaben ans Ende verschieben
@@ -1164,13 +1182,13 @@ function Heute({ tasks, exams, cards, setCards, addXP, dailyMinutes, setDailyMin
   let taskCount = 0;
   
   for (const t of sortedTasks) {
-    const dur = 25; // IMMER 25 Minuten pro Aufgabe
+    const dur = Math.min(t.duration || 25, 45); // Eigene Dauer der Task verwenden, max 45min
     const needsPause = taskCount > 0; // Nach jeder Aufgabe außer der ersten
     const totalTimeNeeded = dur + (needsPause ? 5 : 0);
     
     // Nur planen wenn Aufgabe + Pause komplett in die Zeit passt
     if (remainingTime >= totalTimeNeeded) { 
-      todayPlan.push({ ...t, duration: dur }); // Dauer immer auf 25 setzen
+      todayPlan.push(t); // Original Task mit eigener Dauer behalten
       remainingTime -= dur;
       taskCount++;
       
@@ -1444,16 +1462,74 @@ NUR reines JSON: {"cards":[{"front":"Frage...","back":"Antwort..."}]}`;
           <div style={{ fontSize: 11, color: T.muted, marginBottom: 6 }}>⏱ Verfügbare Zeit heute</div>
           {editingTime ? (
             <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-              <input type="number" value={tempMin} onChange={e => setTempMin(Number(e.target.value))}
-                style={{ width: 70, background: T.surface, border: `1px solid ${T.accent}`, borderRadius: 8, padding: "4px 8px", color: T.text, fontSize: 14 }} />
-              <span style={{ fontSize: 12, color: T.muted }}>min</span>
-              <button onClick={() => { setDailyMinutes(tempMin); setEditingTime(false); }}
+              <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                <button
+                  onClick={() => {
+                    const newHours = Math.max(0, tempHours - 1);
+                    setTempHours(newHours);
+                  }}
+                  style={{ 
+                    width: 20, 
+                    height: 20, 
+                    borderRadius: "50%", 
+                    background: T.accent, 
+                    border: "none", 
+                    color: "white", 
+                    cursor: "pointer", 
+                    fontSize: 12,
+                    fontWeight: "bold",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center"
+                  }}
+                >
+                  -
+                </button>
+                <div style={{
+                  width: 35,
+                  height: 35,
+                  background: T.surface,
+                  border: `1px solid ${T.accent}`,
+                  borderRadius: 6,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: 16,
+                  fontWeight: 800,
+                  color: T.text
+                }}>
+                  {tempHours}
+                </div>
+                <button
+                  onClick={() => {
+                    const newHours = Math.min(12, tempHours + 1);
+                    setTempHours(newHours);
+                  }}
+                  style={{ 
+                    width: 20, 
+                    height: 20, 
+                    borderRadius: "50%", 
+                    background: T.accent, 
+                    border: "none", 
+                    color: "white", 
+                    cursor: "pointer", 
+                    fontSize: 12,
+                    fontWeight: "bold",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center"
+                  }}
+                >
+                  +
+                </button>
+              </div>
+              <span style={{ fontSize: 12, color: T.muted }}>h</span>
+              <button onClick={() => { setDailyMinutes(tempHours * 60); setEditingTime(false); }}
                 style={{ background: T.accent, border: "none", borderRadius: 6, padding: "4px 10px", color: "white", cursor: "pointer", fontSize: 12 }}>✓</button>
             </div>
           ) : (
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <span style={{ fontFamily: T.font, fontWeight: 700, fontSize: 20, color: T.accent }}>{dailyMinutes}</span>
-              <span style={{ fontSize: 12, color: T.muted }}>min</span>
+              <span style={{ fontFamily: T.font, fontWeight: 700, fontSize: 20, color: T.accent }}>{Math.floor(dailyMinutes / 60)}h {dailyMinutes % 60}m</span>
               <button onClick={() => setEditingTime(true)}
                 style={{ background: "transparent", border: "none", color: T.muted, cursor: "pointer", fontSize: 12, marginLeft: 4 }}>✏️</button>
             </div>
