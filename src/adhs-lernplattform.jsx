@@ -2680,6 +2680,14 @@ NUR reines JSON:
 
     try {
       const raw = await callClaudeLarge([{ role: "user", content: prompt }]);
+      console.log("Datenanalyse Claude Raw Response:", raw); // Debug: Rohantwort anzeigen
+      
+      // Prüfen ob Backend-Fehler vorliegt
+      if (raw.includes("FEHLER:") || raw.includes("Backend nicht erreichbar")) {
+        console.error("Backend-Fehler bei Datenanalyse:", raw);
+        throw new Error("Claude Backend nicht erreichbar. Bitte später erneut versuchen.");
+      }
+      
       const plan = safeParseJSON(raw);
       setExams(prev => prev.map(e => e.id === selectedExam ? { ...e, plan } : e));
       // Alte Tasks dieses Fachs entfernen (außer erledigte)
