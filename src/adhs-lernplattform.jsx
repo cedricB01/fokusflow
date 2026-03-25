@@ -112,7 +112,7 @@ async function extractPdfText(file) {
 
 async function callClaude(messages, systemPrompt = "") {
   try {
-    const res = await fetch("/api/claude", {
+    const res = await fetch("/api/anthropic", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -139,7 +139,7 @@ async function callClaude(messages, systemPrompt = "") {
 
 async function callClaudeLarge(messages, systemPrompt = "") {
   try {
-    const res = await fetch("/api/claude", {
+    const res = await fetch("/api/anthropic", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
