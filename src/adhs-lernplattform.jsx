@@ -1269,7 +1269,13 @@ function Heute({ tasks, exams, cards, setCards, addXP, dailyMinutes, setDailyMin
     setPrepMode("generating");
     const existing = (cards || []).filter(c => c.examId === t.examId);
     const existingFronts = existing.map(c => c.front).join(", ");
-    const prompt = `Erstelle 8 Flashcards speziell für das Thema "${t.text}" aus dem Fach "${exam?.subject}".
+    
+    // Dynamische Kartenanzahl basierend auf Modul-Komplexität
+    const complexity = t.priority || 1; // 1=niedrig, 2=mittel, 3=hoch
+    const baseCards = 4;
+    const cardsNeeded = Math.min(12, Math.max(3, baseCards + (complexity * 2)));
+    
+    const prompt = `Erstelle ${cardsNeeded} Flashcards speziell für das Thema "${t.text}" aus dem Fach "${exam?.subject}".
 Themen: ${(exam?.topics || []).join(", ") || t.text}
 ADHS-gerecht: kurze prägnante Antworten, max 1 Satz pro Seite.
 ${existingFronts ? `Bereits vorhanden (nicht wiederholen): ${existingFronts.slice(0, 300)}` : ""}
@@ -1297,13 +1303,16 @@ NUR reines JSON: {"cards":[{"front":"Frage...","back":"Antwort..."}]}`;
     const exam = prepTask.exam;
     
     // ADHS-gerechte Session-Konfiguration
-    // Dynamische Kartenanzahl basierend auf Task-Komplexität und Dauer
-    const baseDuration = t.duration || 25;
-    const maxCards = Math.max(4, Math.min(12, Math.ceil(baseDuration / 2))); // 2min pro Karte
-    const limitedCards = sessionCards.slice(0, maxCards);
+    // Dauer basiert auf Anzahl der Flashcards (ca. 2-3min pro Karte)
+    const cardsCount = sessionCards.length;
+    const baseMinutes = 10; // Mindestzeit
+    const minutesPerCard = 2; // 2 Minuten pro Karte
+    const calculatedDuration = Math.min(25, Math.max(baseMinutes, cardsCount * minutesPerCard));
     
-    // Session-Dauer entspricht der Task-Dauer
-    const sessionDuration = baseDuration;
+    const limitedCards = sessionCards.slice(0, Math.min(12, cardsCount));
+    
+    // Session-Dauer entspricht der berechneten Dauer
+    const sessionDuration = calculatedDuration;
     
     const taskWithDuration = { ...t, duration: sessionDuration };
     setPrepTask(null); setPrepMode(null); setPrepCards([]);
@@ -2532,12 +2541,23 @@ NUR reines JSON:
       // Alte Tasks dieses Fachs entfernen (außer erledigte)
       const filtered = tasks.filter(t => t.examId !== selectedExam || t.done);
       const newTasks = (plan.days || []).flatMap(day =>
-        (day.tasks || []).map(t => ({
-          id: randomId(), text: t.task, done: false, examId: selectedExam,
-          xpVal: t.duration || 25, duration: t.duration || 25, priority: 1,
-          type: t.type || "lernen",
-          plannedDate: null, // kein Datum = wird vom Semesterplan überschrieben
-        }))
+        (day.tasks || []).map(t => {
+          // Dauer basierend auf Task-Typ und Komplexität
+          let calculatedDuration = 15; // Standard
+          if (t.type === "wiederholung") calculatedDuration = 10;
+          else if (t.type === "pruefung") calculatedDuration = 25;
+          else if (t.type === "vertiefung") calculatedDuration = 20;
+          
+          // Max 25 Minuten
+          calculatedDuration = Math.min(25, calculatedDuration);
+          
+          return {
+            id: randomId(), text: t.task, done: false, examId: selectedExam,
+            xpVal: calculatedDuration, duration: calculatedDuration, priority: 1,
+            type: t.type || "lernen",
+            plannedDate: null, // kein Datum = wird vom Semesterplan überschrieben
+          };
+        })
       );
       setTasks([...filtered, ...newTasks]);
       // Nach Erstellung zum Kalender weiterleiten
