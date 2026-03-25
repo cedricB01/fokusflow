@@ -3021,21 +3021,25 @@ function Kalender({ exams, tasks, setTasks, dailyMinutes, addXP, semesterPlan, s
 
     const prompt = `ADHS-Lerncoach. Semesterlernplan für ${examList.length} Klausuren.
 
-Fächer: ${examList.map(e => `${e.subject}(id=${e.id},klausur=${e.date},tage=${e.daysLeft},themen=${e.topics.slice(0,50)})`).join(" | ")}
-Heute: ${todayFormatted}, Täglich: ${dailyMinutes}min, Planung: nächste ${maxDays} Tage
+Fächer: ${examList.map(e => `${e.subject}(id=${e.id},klausur=${e.date},tage=${e.daysLeft})`).join(" | ")}
+Heute: ${todayFormatted}, Täglich: ${dailyMinutes}min, Planung: nächste ${maxDays} Tage bis ${examList.find(e => e.daysLeft === Math.max(...examList.map(ex => ex.daysLeft)))?.date}.
 
-WICHTIG: Der Plan muss exakt ${maxDays} Tage umfassen, von heute bis zur letzten Klausur am ${examList.find(e => e.daysLeft === Math.max(...examList.map(ex => ex.daysLeft)))?.date}.
+Regeln: Dringendste Fächer priorisieren. Letzte 3 Tage vor Klausur = Wiederholung. Max 2-3 Einheiten/Tag.
 
-Regeln: Dringendste Fächer priorisieren. Letzte 3 Tage vor Klausur = Wiederholung. Fächer täglich wechseln. Max 2-3 Einheiten/Tag.
+NUR reines JSON:
+{"overview":"max 20 Wörter","days":{"${todayFormatted}":[{"task":"max 6 Wörter","duration":20,"type":"lernen","examId":"${examList[0]?.id || ""}"}]}}
 
-NUR reines JSON ohne Markdown:
-{"overview":"1 Satz Strategie","days":{"${todayFormatted}":[{"task":"max 6 Wörter","duration":20,"type":"lernen","examId":"id","priority":"normal"}]}}
-
-Fülle days für alle ${maxDays} Tage ohne Ausnahme. Halte tasks kurz (max 6 Wörter). examIds exakt: ${examList.map(e => `${e.subject}=${e.id}`).join(",")}`;
+Fülle alle ${maxDays} Tage. examIds: ${examList.map(e => e.id).join(",")}`;
 
     try {
       const raw = await callClaudeLarge([{ role: "user", content: prompt }]);
+      console.log("Claude Raw Response:", raw); // Debug: Rohantwort anzeigen
+      
       const parsed = safeParseJSON(raw);
+      if (!parsed || !parsed.days) {
+        console.error("Claude Antwort ungültig:", parsed);
+        throw new Error("Claude hat kein valides JSON zurückgegeben");
+      }
       
       // Debug: Überprüfen wie viele Tage tatsächlich generiert wurden
       const generatedDays = Object.keys(parsed.days || {}).length;
