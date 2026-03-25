@@ -1,3 +1,4 @@
+// ADHS LERNPLATTFORM v2.0 - BACKEND FIXED
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { supabase, signIn, signUp, signInMagicLink, signOut,
   loadProfile, saveProfile, loadExams, saveExam,
