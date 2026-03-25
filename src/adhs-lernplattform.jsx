@@ -663,7 +663,7 @@ export default function App() {
       <main style={{ flex: 1, overflow: "auto", minWidth: 0, maxWidth: "100%" }} className="main-content">
         {tab === "dashboard" && <Dashboard tasks={tasks} exams={exams} tip={tip} xp={xp} streak={streak} dailyMinutes={dailyMinutes} usedMinutesToday={usedMinutesToday} setTab={setTab} setDailyMinutes={setDailyMinutes} setPreSelectedExam={setPreSelectedExam} />}
         {tab === "heute" && <Heute tasks={todayTasks} exams={exams} cards={cards} setCards={setCards} addXP={addXP} dailyMinutes={dailyMinutes} setDailyMinutes={setDailyMinutes} setActiveTask={setActiveTask} />}
-        {tab === "exams" && <Exams exams={exams} setExams={setExams} />}
+        {tab === "exams" && <Exams exams={exams} setExams={setExams} setPreSelectedExam={setPreSelectedExam} setTab={setTab} />}
         {tab === "upload" && <Upload exams={exams} addXP={addXP} onAnalysisComplete={(examId, topics) => {
           setExams(prev => prev.map(e => e.id === examId ? { ...e, topics } : e));
           setTab("plan");
@@ -832,7 +832,7 @@ function Dashboard({ tasks, exams, tip, xp, streak, dailyMinutes, usedMinutesTod
                 onChange={e => setTempMin(Number(e.target.value))}
                 onClick={(e) => e.stopPropagation()}
                 style={{ 
-                  width: 60, 
+                  width: 80, 
                   background: T.surface, 
                   border: `1px solid ${T.accent}`, 
                   borderRadius: 6, 
@@ -840,10 +840,10 @@ function Dashboard({ tasks, exams, tip, xp, streak, dailyMinutes, usedMinutesTod
                   color: T.text, 
                   fontSize: isMobile ? 16 : 26,
                   fontWeight: 800,
-                  fontFamily: T.font
+                  fontFamily: T.font,
+                  textAlign: "center"
                 }} 
               />
-              <span style={{ fontSize: isMobile ? 16 : 26, fontWeight: 800, color: T.orange }}>m</span>
             </div>
           ) : `${Math.min(plannedMinutesToday, dailyMinutes)}m`} 
           sub={editingTime ? (
@@ -869,7 +869,7 @@ function Dashboard({ tasks, exams, tip, xp, streak, dailyMinutes, usedMinutesTod
                 ✕
               </button>
             </div>
-          ) : `von ${dailyMinutes} min`} 
+          ) : `von ${Math.floor(dailyMinutes / 60)}h ${dailyMinutes % 60}m`} 
           color={T.orange} 
           onClick={() => {
             if (!editingTime) {
@@ -1011,11 +1011,24 @@ function Heute({ tasks, exams, cards, setCards, addXP, dailyMinutes, setDailyMin
     return bPrio - aPrio;
   });
   
+  // ADHS-gerechte Zeitplanung: 25-Minuten Blöcke mit Pausen
   const todayPlan = [];
+  let remainingTime = dailyMinutes;
+  let taskCount = 0;
+  
   for (const t of sortedTasks) {
-    const dur = t.duration || 25;
-    if (timeLeft >= dur) { todayPlan.push(t); timeLeft -= dur; }
-    if (timeLeft < 15) break;
+    const dur = Math.min(t.duration || 25, 25); // Max 25 Minuten pro Aufgabe
+    if (remainingTime >= dur) { 
+      todayPlan.push(t); 
+      remainingTime -= dur;
+      taskCount++;
+      
+      // Nach jeder Aufgabe eine Pause einplanen (außer bei letzter)
+      if (remainingTime >= 5 && taskCount < sortedTasks.length) {
+        remainingTime -= 5; // 5 Minuten Pause
+      }
+    }
+    if (remainingTime < 15) break;
   }
   
   // Erledigte Aufgaben ans Ende anhängen (zum Wiederöffnen)
@@ -1769,7 +1782,7 @@ Max 5 Fragen, 4 Optionen, correct = Index der richtigen Antwort.`;
 // ════════════════════════════════════════════════
 // KLAUSUREN
 // ════════════════════════════════════════════════
-function Exams({ exams, setExams }) {
+function Exams({ exams, setExams, setPreSelectedExam, setTab }) {
   const [form, setForm] = useState({ subject: "", date: "", topics: "" });
   const colors = [T.accent, T.green, T.orange, "#f472b6", "#38bdf8"];
 
@@ -1797,13 +1810,13 @@ function Exams({ exams, setExams }) {
         </div>
       </div>
       {exams.length === 0 ? <EmptyState icon="📅" text="Noch keine Klausuren. Füge deine erste Prüfung hinzu!" /> : (
-        <div style={{ display: "grid", gridTemplateColumns: typeof window !== "undefined" && window.innerWidth <= 768 ? "1fr" : "1fr 1fr", gap: 16 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 16 }}>
           {[...exams].sort((a, b) => calcPriority(b) - calcPriority(a)).map(e => {
             const d = daysUntil(e.date);
           const urgency = d <= 7 ? T.red : d <= 14 ? T.orange : T.green;
                         return (
               <div key={e.id} style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 16, padding: 20, borderLeft: `4px solid ${e.color}` }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
                   <div>
                     <div style={{ fontFamily: T.font, fontWeight: 700, fontSize: 16 }}>{e.subject}</div>
                     <div style={{ fontSize: 12, color: T.muted, marginTop: 2 }}>{new Date(e.date).toLocaleDateString("de-DE", { day: "numeric", month: "long", year: "numeric" })}</div>
@@ -1812,6 +1825,60 @@ function Exams({ exams, setExams }) {
                     {d === 0 ? "Heute!" : `${d} Tage`}
                   </div>
                 </div>
+                
+                {/* Mobile Management Buttons */}
+                <div style={{ display: "flex", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
+                  <button 
+                    onClick={() => {
+                      setPreSelectedExam(e.id);
+                      setTab("upload");
+                    }}
+                    style={{
+                      background: T.accent,
+                      border: "none",
+                      borderRadius: 8,
+                      padding: "6px 12px",
+                      color: "white",
+                      cursor: "pointer",
+                      fontSize: 12,
+                      fontWeight: 600
+                    }}
+                  >
+                    📁 Unterlagen
+                  </button>
+                  <button 
+                    onClick={() => {
+                      setPreSelectedExam(e.id);
+                      setTab("dateien");
+                    }}
+                    style={{
+                      background: T.surface,
+                      border: `1px solid ${T.border}`,
+                      borderRadius: 8,
+                      padding: "6px 12px",
+                      color: T.muted,
+                      cursor: "pointer",
+                      fontSize: 12,
+                      fontWeight: 600
+                    }}
+                  >
+                    📋 Dateien
+                  </button>
+                  <button 
+                    onClick={() => setExams(prev => prev.filter(ex => ex.id !== e.id))}
+                    style={{
+                      background: "transparent",
+                      border: "none",
+                      color: T.red,
+                      cursor: "pointer",
+                      fontSize: 12,
+                      fontWeight: 600
+                    }}
+                  >
+                    🗑 Löschen
+                  </button>
+                </div>
+
                 <div style={{ marginTop: 12 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
                     <span style={{ fontSize: 11, color: T.muted }}>Lernfortschritt</span>
@@ -1826,8 +1893,6 @@ function Exams({ exams, setExams }) {
                     {e.topics.map(t => <span key={t} style={{ background: e.color + "22", color: e.color, borderRadius: 6, padding: "2px 10px", fontSize: 11 }}>{t}</span>)}
                   </div>
                 )}
-                <button onClick={() => setExams(prev => prev.filter(ex => ex.id !== e.id))}
-                  style={{ marginTop: 12, background: "transparent", border: "none", color: T.muted, cursor: "pointer", fontSize: 12 }}>🗑 Entfernen</button>
               </div>
             );
           })}
