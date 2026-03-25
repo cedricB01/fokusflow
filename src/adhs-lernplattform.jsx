@@ -1313,7 +1313,7 @@ function Heute({ tasks, exams, cards, setCards, addXP, dailyMinutes, setDailyMin
   // Test Claude API
   async function testClaudeAPI() {
     try {
-      const res = await fetch("/api/claude", {
+      const res = await fetch("/api/anthropic", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ test: true }),
