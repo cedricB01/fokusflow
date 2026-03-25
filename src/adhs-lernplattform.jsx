@@ -2843,13 +2843,106 @@ function Kalender({ exams, tasks, setTasks, dailyMinutes, addXP, semesterPlan, s
       });
     }
     
-    // Für andere Tage: Nur Tasks mit explizitem plannedDate
-    return tasks
+    // Für andere Tage: Gleiche Logik wie heute aber mit geplanten Tasks
+    const dayTasks = tasks
       .filter(t => t.plannedDate === dateStr && !t.done)
-      .map(t => {
-        const exam = exams.find(e => e.id === t.examId);
-        return { ...t, examColor: exam?.color || T.accent, examSubject: exam?.subject };
+      .sort((a, b) => {
+        const aPrio = (a.priority || 1) * 2;
+        const bPrio = (b.priority || 1) * 2;
+        return bPrio - aPrio;
       });
+    
+    // Task-Aufteilung auch für zukünftige Tage anwenden
+    const dayPlan = [];
+    let remainingTime = dailyMinutes;
+    let taskCount = 0;
+    
+    for (const t of dayTasks) {
+      const originalDuration = t.duration || 25;
+      
+      if (originalDuration > 25) {
+        const blocksNeeded = Math.ceil(originalDuration / 25);
+        for (let i = 0; i < blocksNeeded; i++) {
+          const needsPause = taskCount > 0;
+          const totalTimeNeeded = 25 + (needsPause ? 5 : 0);
+          
+          if (remainingTime >= totalTimeNeeded) {
+            const blockTask = {
+              ...t,
+              duration: 25,
+              text: i === 0 ? t.text : `${t.text} (${i + 1}/${blocksNeeded})`,
+              isPartOfLargerTask: true,
+              originalTaskId: t.id,
+              blockIndex: i,
+              totalBlocks: blocksNeeded
+            };
+            dayPlan.push(blockTask);
+            remainingTime -= 25;
+            taskCount++;
+            
+            if (needsPause) {
+              remainingTime -= 5;
+            }
+          } else {
+            break;
+          }
+        }
+      } else {
+        const needsPause = taskCount > 0;
+        const totalTimeNeeded = originalDuration + (needsPause ? 5 : 0);
+        
+        if (remainingTime >= totalTimeNeeded) {
+          dayPlan.push({ ...t, duration: originalDuration });
+          remainingTime -= originalDuration;
+          taskCount++;
+          
+          if (needsPause) {
+            remainingTime -= 5;
+          }
+        }
+      }
+      
+      if (remainingTime < 25) break;
+    }
+    
+    return dayPlan.map(t => {
+      const exam = exams.find(e => e.id === t.examId);
+      return { ...t, examColor: exam?.color || T.accent, examSubject: exam?.subject };
+    });
+  };
+
+  // Überfallene Tasks auf zukünftige Tage verteilen
+  // eslint-disable-next-line no-unused-vars
+  const redistributeOverdueTasks = () => {
+    const today = todayStr();
+    const overdueTasks = tasks.filter(t => 
+      !t.done && 
+      !t.doneDate && 
+      (!t.plannedDate || t.plannedDate < today) &&
+      t.examId
+    );
+    
+    if (overdueTasks.length === 0) return;
+    
+    // Nächste 7 Tage finden
+    const nextDays = [];
+    for (let i = 1; i <= 7; i++) {
+      const date = new Date();
+      date.setDate(date.getDate() + i);
+      nextDays.push(date.toISOString().split('T')[0]);
+    }
+    
+    // Tasks gleichmäßig auf die nächsten Tage verteilen
+    const updatedTasks = tasks.map(t => {
+      const overdueIndex = overdueTasks.findIndex(ot => ot.id === t.id);
+      if (overdueIndex === -1) return t;
+      
+      // Task auf den nächsten verfügbaren Tag verschieben
+      const targetDay = nextDays[overdueIndex % nextDays.length];
+      return { ...t, plannedDate: targetDay };
+    });
+    
+    setTasks(updatedTasks);
   };
 
   const generateSemesterPlan = async () => {
