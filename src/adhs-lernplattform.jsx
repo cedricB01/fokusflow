@@ -3024,16 +3024,27 @@ function Kalender({ exams, tasks, setTasks, dailyMinutes, addXP, semesterPlan, s
 Fächer: ${examList.map(e => `${e.subject}(id=${e.id},klausur=${e.date},tage=${e.daysLeft},themen=${e.topics.slice(0,50)})`).join(" | ")}
 Heute: ${todayFormatted}, Täglich: ${dailyMinutes}min, Planung: nächste ${maxDays} Tage
 
+WICHTIG: Der Plan muss exakt ${maxDays} Tage umfassen, von heute bis zur letzten Klausur am ${examList.find(e => e.daysLeft === Math.max(...examList.map(ex => ex.daysLeft)))?.date}.
+
 Regeln: Dringendste Fächer priorisieren. Letzte 3 Tage vor Klausur = Wiederholung. Fächer täglich wechseln. Max 2-3 Einheiten/Tag.
 
 NUR reines JSON ohne Markdown:
 {"overview":"1 Satz Strategie","days":{"${todayFormatted}":[{"task":"max 6 Wörter","duration":20,"type":"lernen","examId":"id","priority":"normal"}]}}
 
-Fülle days für alle ${maxDays} Tage. Halte tasks kurz (max 6 Wörter). examIds exakt: ${examList.map(e => `${e.subject}=${e.id}`).join(",")}`;
+Fülle days für alle ${maxDays} Tage ohne Ausnahme. Halte tasks kurz (max 6 Wörter). examIds exakt: ${examList.map(e => `${e.subject}=${e.id}`).join(",")}`;
 
     try {
       const raw = await callClaudeLarge([{ role: "user", content: prompt }]);
       const parsed = safeParseJSON(raw);
+      
+      // Debug: Überprüfen wie viele Tage tatsächlich generiert wurden
+      const generatedDays = Object.keys(parsed.days || {}).length;
+      console.log("Semesterplan Ergebnis:", {
+        expectedDays: maxDays,
+        generatedDays: generatedDays,
+        correct: generatedDays === maxDays
+      });
+      
       const newTasks = [];
       Object.entries(parsed.days || {}).forEach(([dateStr, entries]) => {
         entries.forEach(entry => {
