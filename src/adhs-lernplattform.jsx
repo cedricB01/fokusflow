@@ -1265,16 +1265,18 @@ NUR reines JSON: {"cards":[{"front":"Frage...","back":"Antwort..."}]}`;
     const exam = prepTask.exam;
     
     // ADHS-gerechte Session-Konfiguration
-    const maxCards = 12;
+    // Dynamische Kartenanzahl basierend auf Task-Komplexität und Dauer
+    const baseDuration = t.duration || 25;
+    const maxCards = Math.max(4, Math.min(12, Math.ceil(baseDuration / 2))); // 2min pro Karte
     const limitedCards = sessionCards.slice(0, maxCards);
     
     let sessionDuration;
     if (sessionLength === "short") {
-      // Kurz-Session: max 25 Minuten, ~2 min pro Karte
-      sessionDuration = Math.min(25, Math.max(10, Math.ceil(limitedCards.length * 2)));
+      // Kurz-Session: max 25 Minuten, individuelle Dauer berücksichtigen
+      sessionDuration = Math.min(baseDuration, Math.max(10, Math.ceil(limitedCards.length * 2)));
     } else {
-      // Lang-Session: max 45 Minuten, ~2 min pro Karte
-      sessionDuration = Math.min(45, Math.max(15, Math.ceil(limitedCards.length * 2)));
+      // Lang-Session: max 25 Minuten (nicht 45!), individuelle Dauer berücksichtigen
+      sessionDuration = Math.min(baseDuration, Math.max(15, Math.ceil(limitedCards.length * 2)));
     }
     
     const taskWithDuration = { ...t, duration: sessionDuration };
