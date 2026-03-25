@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { supabase, signIn, signUp, signInMagicLink, signOut,
   loadProfile, saveProfile, loadExams, saveExam,
   loadTasks, saveTasks, loadCards, saveCards,
@@ -799,7 +799,6 @@ function Dashboard({ tasks, exams, tip, xp, streak, dailyMinutes, usedMinutesTod
   const isMobile = useIsMobile();
   const [editingTime, setEditingTime] = useState(false);
   const [tempHours, setTempHours] = useState(Math.floor(dailyMinutes / 60));
-  const [tempMinutesOnly, setTempMinutesOnly] = useState(dailyMinutes % 60);
   const doneTasks = tasks.filter(t => t.done).length;
   const totalTasks = tasks.length;
   const pct = totalTasks ? Math.round((doneTasks / totalTasks) * 100) : 0;
@@ -813,7 +812,6 @@ function Dashboard({ tasks, exams, tip, xp, streak, dailyMinutes, usedMinutesTod
   // Update temp states when dailyMinutes changes
   useEffect(() => {
     setTempHours(Math.floor(dailyMinutes / 60));
-    setTempMinutesOnly(dailyMinutes % 60);
   }, [dailyMinutes]);
 
   // Ungeplante nach Priorität sortieren und passende auswählen
@@ -905,50 +903,71 @@ function Dashboard({ tasks, exams, tip, xp, streak, dailyMinutes, usedMinutesTod
           label="Heute" 
           value={editingTime ? (
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <input 
-                type="number" 
-                value={tempHours} 
-                onChange={e => {
-                  const hours = Number(e.target.value) || 0;
-                  setTempHours(hours);
-                }}
-                onClick={(e) => e.stopPropagation()}
-                style={{ 
-                  width: 50, 
-                  background: T.surface, 
-                  border: `1px solid ${T.accent}`, 
-                  borderRadius: 6, 
-                  padding: "4px 8px", 
-                  color: T.text, 
-                  fontSize: isMobile ? 16 : 26,
+              <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const newHours = Math.max(0, tempHours - 1);
+                    setTempHours(newHours);
+                  }}
+                  style={{ 
+                    width: 24, 
+                    height: 24, 
+                    borderRadius: "50%", 
+                    background: T.accent, 
+                    border: "none", 
+                    color: "white", 
+                    cursor: "pointer", 
+                    fontSize: 16,
+                    fontWeight: "bold",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center"
+                  }}
+                >
+                  -
+                </button>
+                <div style={{
+                  width: 40,
+                  height: 40,
+                  background: T.surface,
+                  border: `1px solid ${T.accent}`,
+                  borderRadius: 8,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: isMobile ? 18 : 24,
                   fontWeight: 800,
-                  fontFamily: T.font,
-                  textAlign: "center"
-                }} 
-              />
+                  color: T.text,
+                  fontFamily: T.font
+                }}>
+                  {tempHours}
+                </div>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const newHours = Math.min(12, tempHours + 1);
+                    setTempHours(newHours);
+                  }}
+                  style={{ 
+                    width: 24, 
+                    height: 24, 
+                    borderRadius: "50%", 
+                    background: T.accent, 
+                    border: "none", 
+                    color: "white", 
+                    cursor: "pointer", 
+                    fontSize: 16,
+                    fontWeight: "bold",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center"
+                  }}
+                >
+                  +
+                </button>
+              </div>
               <span style={{ fontSize: isMobile ? 16 : 26, fontWeight: 800, color: T.orange }}>h</span>
-              <input 
-                type="number" 
-                value={tempMinutesOnly} 
-                onChange={e => {
-                  const minutes = Math.min(59, Number(e.target.value) || 0);
-                  setTempMinutesOnly(minutes);
-                }}
-                onClick={(e) => e.stopPropagation()}
-                style={{ 
-                  width: 50, 
-                  background: T.surface, 
-                  border: `1px solid ${T.accent}`, 
-                  borderRadius: 6, 
-                  padding: "4px 8px", 
-                  color: T.text, 
-                  fontSize: isMobile ? 16 : 26,
-                  fontWeight: 800,
-                  fontFamily: T.font,
-                  textAlign: "center"
-                }} 
-              />
-              <span style={{ fontSize: isMobile ? 16 : 26, fontWeight: 800, color: T.orange }}>m</span>
             </div>
           ) : `${Math.floor(dailyMinutes / 60)}h ${dailyMinutes % 60}m`} 
           sub={editingTime ? (
@@ -956,7 +975,7 @@ function Dashboard({ tasks, exams, tip, xp, streak, dailyMinutes, usedMinutesTod
               <button 
                 onClick={(e) => {
                   e.stopPropagation();
-                  const totalMinutes = tempHours * 60 + tempMinutesOnly;
+                  const totalMinutes = tempHours * 60;
                   setDailyMinutes(totalMinutes);
                   setEditingTime(false);
                 }}
@@ -968,7 +987,6 @@ function Dashboard({ tasks, exams, tip, xp, streak, dailyMinutes, usedMinutesTod
                 onClick={(e) => {
                   e.stopPropagation();
                   setTempHours(Math.floor(dailyMinutes / 60));
-                  setTempMinutesOnly(dailyMinutes % 60);
                   setEditingTime(false);
                 }}
                 style={{ background: T.red, border: "none", borderRadius: 6, padding: "4px 10px", color: "white", cursor: "pointer", fontSize: 10 }}
@@ -1475,8 +1493,11 @@ NUR reines JSON: {"cards":[{"front":"Frage...","back":"Antwort..."}]}`;
               const isFirst = idx === 0 && !isDone && todayDoneCount === idx;
               const prio = idx < 2 ? "🔴" : idx < 5 ? "🟡" : "🟢";
               const hasCards = (cards || []).filter(c => c.examId === t.examId).length;
+              const isTodayTask = !isDone && idx < todayPlan.length;
+              const shouldShowPause = isTodayTask && idx < todayPlan.length - 1; // Pause nach jeder außer letzter
 
               return (
+                <React.Fragment key={t.id}>
                 <div key={t.id} style={{
                   background: isDone ? T.surface : T.card, 
                   border: `1px solid ${isFirst ? T.accent : isDone ? T.border : T.border}`,
@@ -1541,6 +1562,29 @@ NUR reines JSON: {"cards":[{"front":"Frage...","back":"Antwort..."}]}`;
                     </button>
                   </div>
                 </div>
+                
+                {/* Pause nach jeder Aufgabe (außer letzter) */}
+                {shouldShowPause && (
+                  <div style={{ 
+                    background: T.green + "11", 
+                    border: `1px solid ${T.green}33`, 
+                    borderRadius: 12, 
+                    padding: "12px 16px", 
+                    margin: "8px 0", 
+                    display: "flex", 
+                    gap: 10, 
+                    alignItems: "center",
+                    fontSize: 13,
+                    color: T.green,
+                    fontWeight: 600,
+                    textAlign: "center",
+                    justifyContent: "center"
+                  }}>
+                    <span style={{ fontSize: 16 }}>☕</span>
+                    <span>5 Min Pause - ADHS-gerechte Lernpause</span>
+                  </div>
+                )}
+                </React.Fragment>
               );
             })}
           </div>
@@ -2111,7 +2155,7 @@ function Upload({ exams, addXP, onAnalysisComplete, preSelectedExam = "" }) {
       if (!contentData && !manualTopics) return;
       const hasContent = contentData?.type === "images"
         ? contentData.files.length > 0
-        : contentData?.content && contentData.content.trim().length >= 50;
+        : contentData?.content && contentData.content.trim().length >= 10; // Weniger Text für Skripte
       if (mode !== "manuell" && !hasContent) {
         setResult({ error: true, errorMsg: "Die Datei konnte nicht ausgelesen werden. Lade ein Foto der Klausur hoch (JPG/PNG) oder füge den Text direkt ein." });
         return;
