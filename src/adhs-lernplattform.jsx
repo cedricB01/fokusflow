@@ -1108,7 +1108,6 @@ NUR reines JSON: {"cards":[{"front":"Frage...","back":"Antwort..."}]}`;
         {prepMode === "choose" && (() => {
           const topicSpecific = (cards || []).filter(c => c.examId === t.examId && c.topic === t.text);
           const hasTopicCards = topicSpecific.length >= 1; // Schon 1 Karte reicht
-          const existing = (cards || []).filter(c => c.examId === t.examId);
           
           return (
             <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
