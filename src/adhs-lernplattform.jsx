@@ -773,7 +773,7 @@ export default function App() {
         {tab === "karten" && <Flashcards exams={exams} cards={cards} setCards={setCards} addXP={addXP} />}
         {tab === "badges" && <BadgesTab badges={badges} xp={xp} streak={streak} tasks={tasks} onImport={handleDataImport} />}
         {tab === "chat" && <Chat exams={exams} tasks={tasks} />}
-        {tab === "dateien" && <FileOverview exams={exams} setTab={setTab} setPreSelectedExam={setPreSelectedExam} />}
+        {tab === "dateien" && <FileOverview exams={exams} tasks={tasks} setTab={setTab} setPreSelectedExam={setPreSelectedExam} />}
         {tab === "profil" && <Profile user={user} userPlan={userPlan} setUserPlan={setUserPlan} xp={xp} streak={streak} badges={badges} resetData={resetData} />}
       </main>
 
@@ -1182,13 +1182,13 @@ function Heute({ tasks, exams, cards, setCards, addXP, dailyMinutes, setDailyMin
   let taskCount = 0;
   
   for (const t of sortedTasks) {
-    const dur = Math.min(t.duration || 25, 25); // Max 25 Minuten pro Aufgabe
+    const dur = t.duration || 25; // Individuelle Dauer der Aufgabe behalten
     const needsPause = taskCount > 0; // Nach jeder Aufgabe außer der ersten
     const totalTimeNeeded = dur + (needsPause ? 5 : 0);
     
     // Strikte Zeitbegrenzung: nur planen wenn Aufgabe + Pause komplett in die verfügbare Zeit passt
     if (remainingTime >= totalTimeNeeded) { 
-      todayPlan.push({ ...t, duration: dur }); // Task mit korrigierter Dauer (max 25min)
+      todayPlan.push({ ...t, duration: dur }); // Task mit individueller Dauer
       remainingTime -= dur;
       taskCount++;
       
@@ -4304,23 +4304,49 @@ function Profile({ user, userPlan, setUserPlan, xp, streak, badges, resetData })
 // ════════════════════════════════════════════════
 // DATEI-ÜBERSICHT
 // ════════════════════════════════════════════════
-function FileOverview({ exams, setTab, setPreSelectedExam }) {
+function FileOverview({ exams, tasks, setTab, setPreSelectedExam }) {
   const isMobile = useIsMobile();
   const [selectedExam, setSelectedExam] = useState("");
 
   const exam = selectedExam ? exams.find(e => e.id === selectedExam) : null;
   
-  // Einfache Quell-Anzeige für Demo-Zwecke
-  const getSourceInfo = (examId) => {
-    // Später aus Datenbank laden, aktuell Platzhalter
-    return [
-      { topic: "Grundlagen", source: "Manuell eingegeben" },
-      { topic: "Schwerpunkte", source: "Datei Upload" },
-      { topic: "Prüfungsthemen", source: "Klausur analysiert" }
-    ];
+  // Echte Themenquellen aus Tasks und Uploads ableiten
+  const getSourceInfo = (examId, exam) => {
+    const sources = [];
+    
+    if (exam.topics && exam.topics.length > 0) {
+      sources.push({
+        topic: "Klausurthemen",
+        source: "Klausur analysiert",
+        details: exam.topics.slice(0, 3).join(", ")
+      });
+    }
+    
+    // Tasks für dieses Fach durchsuchen
+    const examTasks = tasks.filter(t => t.examId === examId);
+    const manualTopics = examTasks.filter(t => !t.generatedFromUpload);
+    const uploadTopics = examTasks.filter(t => t.generatedFromUpload);
+    
+    if (manualTopics.length > 0) {
+      sources.push({
+        topic: "Manuelle Themen",
+        source: "Manuell eingegeben",
+        details: `${manualTopics.length} Themen hinzugefügt`
+      });
+    }
+    
+    if (uploadTopics.length > 0) {
+      sources.push({
+        topic: "Upload-Themen",
+        source: "Datei Upload",
+        details: `${uploadTopics.length} Themen aus Dokumenten`
+      });
+    }
+    
+    return sources;
   };
 
-  const sourceInfo = exam ? getSourceInfo(exam.id) : [];
+  const sourceInfo = exam ? getSourceInfo(exam.id, exam) : [];
 
   return (
     <div style={{ padding: isMobile ? 16 : 32, animation: "fadeUp 0.4s ease" }}>
@@ -4406,6 +4432,7 @@ function FileOverview({ exams, setTab, setPreSelectedExam }) {
                   <div>
                     <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 2 }}>{item.topic}</div>
                     <div style={{ fontSize: 12, color: T.muted }}>{item.source}</div>
+                    {item.details && <div style={{ fontSize: 11, color: T.muted, marginTop: 1 }}>{item.details}</div>}
                   </div>
                   <div style={{
                     background: item.source === "Manuell eingegeben" ? T.green + "22" : 
