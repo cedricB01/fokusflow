@@ -178,6 +178,13 @@ const daysUntil = (dateStr) => { const [y,m,d] = dateStr.split('-').map(Number);
 const randomId = () => Math.random().toString(36).slice(2, 9);
 const todayStr = () => { const d = new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); };
 const todayLabel = () => new Date().toLocaleDateString("de-DE", { weekday: "long", day: "numeric", month: "long" });
+const getGreeting = () => {
+  const hour = new Date().getHours();
+  if (hour < 12) return "Guten Morgen! 👋";
+  if (hour < 18) return "Guten Tag! ☀️";
+  if (hour < 22) return "Guten Abend! 🌅";
+  return "Gute Nacht! 🌙";
+};
 const getLevel = (xp) => Math.floor(xp / 100) + 1;
 const getXPProgress = (xp) => xp % 100;
 
@@ -193,17 +200,18 @@ const getStreakInfo = (streak) => {
 
 const BADGES = [
   { id: "first_session", icon: "🎯", name: "Erster Schritt", desc: "Erste Lernsession abgeschlossen", xpBonus: 10 },
-  { id: "streak_3", icon: "🔥", name: "Auf Kurs", desc: "3 Tage Lernstreak", xpBonus: 20 },
-  { id: "streak_7", icon: "⚡", name: "Wochenkrieger", desc: "7 Tage Lernstreak", xpBonus: 50 },
-  { id: "streak_14", icon: "🌟", name: "Unaufhaltsam", desc: "14 Tage Lernstreak", xpBonus: 100 },
-  { id: "level_5", icon: "🏅", name: "Lernprofi", desc: "Level 5 erreicht", xpBonus: 30 },
-  { id: "level_10", icon: "🥈", name: "Experte", desc: "Level 10 erreicht", xpBonus: 75 },
-  { id: "level_20", icon: "🥇", name: "Meister", desc: "Level 20 erreicht", xpBonus: 150 },
+  // Level-System für Streaks
+  { id: "streak_3", icon: "🔥", name: "Auf Kurs", desc: "3 Tage Lernstreak", xpBonus: 20, level: 1, group: "streak" },
+  { id: "streak_7", icon: "⚡", name: "Wochenkrieger", desc: "7 Tage Lernstreak", xpBonus: 50, level: 2, group: "streak", requires: "streak_3" },
+  { id: "streak_14", icon: "🌟", name: "Unaufhaltsam", desc: "14 Tage Lernstreak", xpBonus: 100, level: 3, group: "streak", requires: "streak_7" },
+  { id: "level_5", icon: "📈", name: "Anfänger", desc: "Level 5 erreicht", xpBonus: 30 },
+  { id: "level_10", icon: "🚀", name: "Fortgeschritten", desc: "Level 10 erreicht", xpBonus: 60 },
+  { id: "level_20", icon: "💎", name: "Experte", desc: "Level 20 erreicht", xpBonus: 120 },
   { id: "cards_50", icon: "🃏", name: "Kartensammler", desc: "50 Flashcards gelernt", xpBonus: 40 },
-  { id: "perfect_quiz", icon: "💯", name: "Perfektionist", desc: "Quiz mit 100% abgeschlossen", xpBonus: 25 },
-  { id: "all_done", icon: "🎓", name: "Klausurbereit", desc: "Alle Aufgaben eines Fachs erledigt", xpBonus: 60 },
-  { id: "planner", icon: "📆", name: "Stratege", desc: "Semesterplan erstellt", xpBonus: 30 },
-  { id: "early_bird", icon: "🌅", name: "Frühstarter", desc: "Lernplan 30+ Tage vor Klausur erstellt", xpBonus: 35 },
+  { id: "perfect_quiz", icon: "🏆", name: "Perfektionist", desc: "Perfekte Quiz-Session", xpBonus: 25 },
+  { id: "all_done", icon: "✅", name: "Perfekter Tag", desc: "Alle Tagesaufgaben erledigt", xpBonus: 30 },
+  { id: "planner", icon: "📅", name: "Stratege", desc: "Ersten Lernplan erstellt", xpBonus: 20 },
+  { id: "early_bird", icon: "🌅", name: "Frühstarter", desc: "Klausur >100 Tage im Voraus geplant", xpBonus: 35 },
 ];
 
 const getLevelReward = (level) => {
@@ -771,7 +779,7 @@ export default function App() {
         {tab === "kalender" && <Kalender exams={exams} tasks={tasks} setTasks={setTasks} dailyMinutes={dailyMinutes} addXP={addXP} semesterPlan={semesterPlan} setSemesterPlan={setSemesterPlan} generating={generatingSemester} setGenerating={setGeneratingSemester} />}
         {tab === "focus" && <Focus addXP={addXP} markStudiedToday={markStudiedToday} />}
         {tab === "karten" && <Flashcards exams={exams} cards={cards} setCards={setCards} addXP={addXP} />}
-        {tab === "badges" && <BadgesTab badges={badges} xp={xp} streak={streak} tasks={tasks} onImport={handleDataImport} />}
+        {tab === "badges" && <BadgesTab badges={badges} xp={xp} streak={streak} tasks={tasks} cards={cards} onImport={handleDataImport} />}
         {tab === "chat" && <Chat exams={exams} tasks={tasks} />}
         {tab === "dateien" && <FileOverview exams={exams} tasks={tasks} setTab={setTab} setPreSelectedExam={setPreSelectedExam} />}
         {tab === "profil" && <Profile user={user} userPlan={userPlan} setUserPlan={setUserPlan} xp={xp} streak={streak} badges={badges} resetData={resetData} />}
@@ -861,7 +869,7 @@ function Dashboard({ tasks, exams, tip, xp, streak, dailyMinutes, usedMinutesTod
     <div style={{ padding: isMobile ? 16 : 32, animation: "fadeUp 0.4s ease" }}>
       <div style={{ marginBottom: isMobile ? 16 : 24 }}>
         <div style={{ fontFamily: T.font, fontSize: isMobile ? 22 : 28, fontWeight: 800, letterSpacing: -1 }}>
-          {todayDone > 0 && todayDone >= todayTotal ? "Tagesplan erledigt! 🎉" : "Guten Morgen! 👋"}
+          {todayDone > 0 && todayDone >= todayTotal ? "Tagesplan erledigt! 🎉" : getGreeting()}
         </div>
         <div style={{ color: T.muted, marginTop: 4 }}>{todayLabel()}</div>
       </div>
@@ -2551,11 +2559,17 @@ NUR reines JSON:
           // Max 25 Minuten
           calculatedDuration = Math.min(25, calculatedDuration);
           
+          // Datum aus Plan berechnen (heute + day.day - 1)
+          const today = new Date();
+          const plannedDate = new Date(today);
+          plannedDate.setDate(today.getDate() + (day.day - 1));
+          const dateStr = `${plannedDate.getFullYear()}-${String(plannedDate.getMonth()+1).padStart(2,'0')}-${String(plannedDate.getDate()).padStart(2,'0')}`;
+          
           return {
             id: randomId(), text: t.task, done: false, examId: selectedExam,
             xpVal: calculatedDuration, duration: calculatedDuration, priority: 1,
             type: t.type || "lernen",
-            plannedDate: null, // kein Datum = wird vom Semesterplan überschrieben
+            plannedDate: dateStr, // Korrektes Datum setzen
           };
         })
       );
@@ -3399,7 +3413,7 @@ function FlashCard({ card, onDelete }) {
 // ════════════════════════════════════════════════
 // BADGES TAB
 // ════════════════════════════════════════════════
-function BadgesTab({ badges, xp, streak, tasks, onImport }) {
+function BadgesTab({ badges, xp, streak, tasks, cards, onImport }) {
   const [importing, setImporting] = useState(false);
   const [importMsg, setImportMsg] = useState(null);
   const importRef = useRef();
@@ -3421,6 +3435,7 @@ function BadgesTab({ badges, xp, streak, tasks, onImport }) {
   };
   const level = getLevel(xp);
   const doneTasks = tasks.filter(t => t.done).length;
+  const learnedCards = cards.filter(c => (c.score || 0) > 0).length; // Gelernte Flashcards
 
   const isUnlocked = (id) => badges.includes(id);
 
@@ -3428,19 +3443,29 @@ function BadgesTab({ badges, xp, streak, tasks, onImport }) {
   const getProgress = (badge) => {
     switch (badge.id) {
       case "first_session": return { current: doneTasks > 0 ? 1 : 0, max: 1 };
-      case "streak_3":  return { current: Math.min(streak, 3), max: 3 };
-      case "streak_7":  return { current: Math.min(streak, 7), max: 7 };
-      case "streak_14": return { current: Math.min(streak, 14), max: 14 };
-      case "level_5":  return { current: Math.min(level, 5), max: 5 };
+      // Level-System für Streaks - nur nächstes Level anzeigen
+      case "streak_3": 
+        return { current: Math.min(streak, 3), max: 3 };
+      case "streak_7": 
+        return { current: isUnlocked("streak_3") ? Math.min(Math.max(0, streak - 3), 4) : 0, max: 4 };
+      case "streak_14": 
+        return { current: isUnlocked("streak_7") ? Math.min(Math.max(0, streak - 7), 7) : 0, max: 7 };
+      case "level_5": return { current: Math.min(level, 5), max: 5 };
       case "level_10": return { current: Math.min(level, 10), max: 10 };
       case "level_20": return { current: Math.min(level, 20), max: 20 };
-      case "cards_50": return { current: Math.min(doneTasks, 50), max: 50 };
+      case "cards_50": return { current: Math.min(learnedCards, 50), max: 50 };
       case "perfect_quiz": return { current: isUnlocked("perfect_quiz") ? 1 : 0, max: 1 };
       case "all_done": return { current: isUnlocked("all_done") ? 1 : 0, max: 1 };
-      case "planner":  return { current: isUnlocked("planner") ? 1 : 0, max: 1 };
+      case "planner": return { current: isUnlocked("planner") ? 1 : 0, max: 1 };
       case "early_bird": return { current: isUnlocked("early_bird") ? 1 : 0, max: 1 };
       default: return { current: 0, max: 1 };
     }
+  };
+
+  // Prüfen ob Badge verfügbar ist (Voraussetzungen erfüllt)
+  const isAvailable = (badge) => {
+    if (!badge.requires) return true;
+    return isUnlocked(badge.requires);
   };
 
   const unlockedCount = BADGES.filter(b => isUnlocked(b.id)).length;
@@ -3531,28 +3556,44 @@ function BadgesTab({ badges, xp, streak, tasks, onImport }) {
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 12 }}>
         {BADGES.map(badge => {
           const unlocked = isUnlocked(badge.id);
+          const available = isAvailable(badge);
           const prog = getProgress(badge);
           const pct = Math.min(100, (prog.current / prog.max) * 100);
           return (
             <div key={badge.id} style={{
-              background: unlocked ? T.accentSoft : T.card,
-              border: `1px solid ${unlocked ? T.accent + "66" : T.border}`,
+              background: unlocked ? T.accentSoft : (available ? T.card : T.surface),
+              border: `1px solid ${unlocked ? T.accent + "66" : (available ? T.border : T.border + "44")}`,
               borderRadius: 14, padding: "16px",
-              opacity: unlocked ? 1 : 0.7,
+              opacity: unlocked ? 1 : (available ? 0.9 : 0.5),
               transition: "all 0.2s",
+              position: "relative"
             }}>
-              <div style={{ fontSize: 32, marginBottom: 8, filter: unlocked ? "none" : "grayscale(1)" }}>{badge.icon}</div>
-              <div style={{ fontWeight: 700, fontSize: 14, color: unlocked ? T.text : T.muted }}>{badge.name}</div>
+              {!available && (
+                <div style={{ 
+                  position: "absolute", top: 8, right: 8, 
+                  background: T.muted, color: "white", 
+                  borderRadius: 99, padding: "2px 6px", 
+                  fontSize: 9, fontWeight: 600 
+                }}>
+                  🔒
+                </div>
+              )}
+              <div style={{ fontSize: 32, marginBottom: 8, filter: unlocked ? "none" : (available ? "grayscale(0.3)" : "grayscale(0.8)") }}>{badge.icon}</div>
+              <div style={{ fontWeight: 700, fontSize: 14, color: unlocked ? T.text : (available ? T.text : T.muted) }}>{badge.name}</div>
               <div style={{ fontSize: 11, color: T.muted, marginTop: 3, lineHeight: 1.5 }}>{badge.desc}</div>
               {unlocked ? (
                 <div style={{ fontSize: 11, color: T.green, marginTop: 8, fontWeight: 600 }}>✅ Freigeschaltet · +{badge.xpBonus} XP</div>
-              ) : (
+              ) : available ? (
                 <>
                   <div style={{ background: T.border, borderRadius: 99, height: 4, marginTop: 10, overflow: "hidden" }}>
                     <div style={{ width: `${pct}%`, background: T.accent, height: "100%", borderRadius: 99, transition: "width 0.5s" }} />
                   </div>
                   <div style={{ fontSize: 10, color: T.muted, marginTop: 4 }}>{prog.current}/{prog.max}</div>
                 </>
+              ) : (
+                <div style={{ fontSize: 10, color: T.muted, marginTop: 8, fontStyle: "italic" }}>
+                  {badge.requires ? `Benötigt: ${BADGES.find(b => b.id === badge.requires)?.name}` : "Noch verfügbar"}
+                </div>
               )}
             </div>
           );
