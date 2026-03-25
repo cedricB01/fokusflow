@@ -1280,9 +1280,28 @@ function Dashboard({ tasks, exams, tip, xp, streak, dailyMinutes, usedMinutesTod
   );
 }
 
-// ════════════════════════════════════════════════
-// HEUTE TAB
-// ════════════════════════════════════════════════
+// Test API Connection
+async function testAPI() {
+  try {
+    const res = await fetch("/api/test", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ test: true }),
+    });
+    const data = await res.json();
+    console.log("API Test Result:", data);
+    return data;
+  } catch (error) {
+    console.error("API Test Error:", error);
+    return null;
+  }
+}
+
+// Test API beim Laden der App
+useEffect(() => {
+  testAPI();
+}, []);
+
 function Heute({ tasks, exams, cards, setCards, addXP, dailyMinutes, setDailyMinutes, setActiveTask }) {
   const isMobile = useIsMobile();
   const [editingTime, setEditingTime] = useState(false);
