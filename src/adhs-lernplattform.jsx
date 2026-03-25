@@ -285,6 +285,39 @@ export default function App() {
     return () => subscription.unsubscribe();
   }, []);
 
+  // Automatische Lernplan-Anpassung bei Änderung der täglichen Lernzeit
+  useEffect(() => {
+    if (semesterPlan && exams.length > 0 && !generatingSemester) {
+      // Kleine Verzögerung, um zu viele Neugenerierungen zu vermeiden
+      const timeoutId = setTimeout(() => {
+        // Nur neu verteilen, wenn die Änderung signifikant ist (>5 Minuten)
+        const currentPlanMinutes = semesterPlan.dailyMinutes || 60;
+        if (Math.abs(dailyMinutes - currentPlanMinutes) > 5) {
+          // Einfache Neustrukturierung der Tasks ohne KI-Aufruf
+          redistributeTasks();
+        }
+      }, 1000);
+      
+      return () => clearTimeout(timeoutId);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dailyMinutes, semesterPlan, exams.length, generatingSemester]);
+
+  const redistributeTasks = () => {
+    // Alle ungeplanten Tasks neu verteilen basierend auf der neuen Zeit
+    const updatedTasks = tasks.map(t => {
+      if (!t.plannedDate && !t.done) {
+        // Tasks neu priorisieren basierend auf verfügbarer Zeit
+        const exam = exams.find(e => e.id === t.examId);
+        const urgency = exam ? daysUntil(exam.date) : 999;
+        const newPriority = urgency <= 7 ? 3 : urgency <= 14 ? 2 : 1;
+        return { ...t, priority: newPriority };
+      }
+      return t;
+    });
+    setTasks(updatedTasks);
+  };
+
   const resetData = () => {
     setXp(0); setStreak(0); setLastStudyDate(""); setExams([]);
     setTasks([]); setDailyMinutes(60); setCards([]); setSemesterPlan(null); setBadges([]);
@@ -664,11 +697,31 @@ export default function App() {
         {tab === "dashboard" && <Dashboard tasks={tasks} exams={exams} tip={tip} xp={xp} streak={streak} dailyMinutes={dailyMinutes} usedMinutesToday={usedMinutesToday} setTab={setTab} setDailyMinutes={setDailyMinutes} setPreSelectedExam={setPreSelectedExam} />}
         {tab === "heute" && <Heute tasks={todayTasks} exams={exams} cards={cards} setCards={setCards} addXP={addXP} dailyMinutes={dailyMinutes} setDailyMinutes={setDailyMinutes} setActiveTask={setActiveTask} />}
         {tab === "exams" && <Exams exams={exams} setExams={setExams} setPreSelectedExam={setPreSelectedExam} setTab={setTab} />}
-        {tab === "upload" && <Upload exams={exams} addXP={addXP} onAnalysisComplete={(examId, topics) => {
+        {tab === "upload" && <Upload exams={exams} addXP={addXP} onAnalysisComplete={async (examId, topics) => {
+          // Themen aktualisieren
           setExams(prev => prev.map(e => e.id === examId ? { ...e, topics } : e));
+          
+          // Automatisch Tasks aus neuen Themen erstellen
+          const exam = exams.find(e => e.id === examId);
+          if (exam && topics && topics.length > 0) {
+            const newTasks = topics.map((topic, index) => ({
+              id: randomId(),
+              text: topic,
+              done: false,
+              examId: examId,
+              xpVal: 25,
+              duration: 25,
+              priority: 1,
+              type: "lernen"
+            }));
+            
+            setTasks(prev => [...prev, ...newTasks]);
+          }
+          
+          // Zum Plan-Tab weiterleiten
           setTab("plan");
         }} preSelectedExam={preSelectedExam} />}
-        {tab === "plan" && <Plan exams={exams} setExams={setExams} tasks={tasks} setTasks={setTasks} dailyMinutes={dailyMinutes} />}
+        {tab === "plan" && <Plan exams={exams} setExams={setExams} tasks={tasks} setTasks={setTasks} dailyMinutes={dailyMinutes} setTab={setTab} />}
         {tab === "kalender" && <Kalender exams={exams} tasks={tasks} setTasks={setTasks} dailyMinutes={dailyMinutes} addXP={addXP} semesterPlan={semesterPlan} setSemesterPlan={setSemesterPlan} generating={generatingSemester} setGenerating={setGeneratingSemester} />}
         {tab === "focus" && <Focus addXP={addXP} markStudiedToday={markStudiedToday} />}
         {tab === "karten" && <Flashcards exams={exams} cards={cards} setCards={setCards} addXP={addXP} />}
@@ -2205,7 +2258,7 @@ const getDiffColor = d => d <= 2 ? T.green : d <= 3 ? T.orange : T.red;
 // ════════════════════════════════════════════════
 // LERNPLAN
 // ════════════════════════════════════════════════
-function Plan({ exams, setExams, tasks, setTasks, dailyMinutes }) {
+function Plan({ exams, setExams, tasks, setTasks, dailyMinutes, setTab }) {
   const [selectedExam, setSelectedExam] = useState(exams[0]?.id || "");
   const [loading, setLoading] = useState(false);
 
@@ -2259,18 +2312,54 @@ NUR reines JSON:
         }))
       );
       setTasks([...filtered, ...newTasks]);
+      // Nach Erstellung zum Kalender weiterleiten
+      setTab("kalender");
     } catch (err) { console.error("Plan failed", err); }
     setLoading(false);
   };
 
   const exam = exams.find(e => e.id === selectedExam);
   const plan = exam?.plan;
-  const typeColor = { lernen: T.accent, wiederholen: T.green, üben: T.orange };
-  const typeIcon = { lernen: "📖", wiederholen: "🔄", üben: "✏️" };
 
   return (
     <div style={{ padding: "clamp(12px, 4vw, 32px)", animation: "fadeUp 0.4s ease" }}>
       <PageHeader title="🗓️ Lernplan Generator" sub="KI erstellt deinen personalisierten Lernplan für alle Fächer" />
+
+      {/* Weiterleitung zum Kalender */}
+      <div style={{ 
+        background: T.accentSoft, 
+        border: `1px solid ${T.accent}44`, 
+        borderRadius: 16, 
+        padding: "20px", 
+        marginBottom: 24,
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center"
+      }}>
+        <div>
+          <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 4 }}>
+            📅 Vollständiger Semesterplan
+          </div>
+          <div style={{ fontSize: 13, color: T.muted }}>
+            Alle Lernpläne im Kalender mit automatischer Verteilung
+          </div>
+        </div>
+        <button
+          onClick={() => setTab("kalender")}
+          style={{
+            background: T.accent,
+            border: "none",
+            borderRadius: 10,
+            padding: "12px 24px",
+            color: "white",
+            cursor: "pointer",
+            fontSize: 14,
+            fontWeight: 600
+          }}
+        >
+          Zum Kalender →
+        </button>
+      </div>
 
       {exam?.topics?.length > 0 && (
         <div style={{ background: T.accentSoft, border: `1px solid ${T.accent}44`, borderRadius: 12, padding: "12px 20px", marginBottom: 20, display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
@@ -2297,32 +2386,15 @@ NUR reines JSON:
           {plan && !loading && (
             <div style={{ animation: "fadeUp 0.4s ease" }}>
               <div style={{ background: T.accentSoft, border: `1px solid ${T.accent}44`, borderRadius: 16, padding: "16px 20px", marginBottom: 20 }}>
-                <div style={{ fontFamily: T.font, fontWeight: 700, color: T.accent, marginBottom: 6 }}>📋 Lernstrategie</div>
-                <div style={{ fontSize: 14, lineHeight: 1.7 }}>{plan.overview}</div>
-                {plan.adhsStrategy && <div style={{ marginTop: 8, fontSize: 13, color: T.muted }}>💡 {plan.adhsStrategy}</div>}
+                <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }}>{plan.overview}</div>
+                <div style={{ fontSize: 12, color: T.muted }}>{plan.adhsStrategy}</div>
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 16 }}>
-                {plan.days?.map(day => (
-                  <div key={day.day} style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 16, padding: 20 }}>
-                    <div style={{ fontFamily: T.font, fontWeight: 700, marginBottom: 4 }}>Tag {day.day} – {day.label}</div>
-                    <div style={{ fontSize: 12, color: T.muted, marginBottom: 14 }}>🎯 {day.focus}</div>
-                    {day.tasks?.map((t, i) => (
-                      <div key={i} style={{ display: "flex", gap: 10, alignItems: "flex-start", marginBottom: 10 }}>
-                        <div style={{ width: 28, height: 28, borderRadius: 8, flexShrink: 0, background: (typeColor[t.type] || T.accent) + "33", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14 }}>
-                          {typeIcon[t.type] || "📖"}
-                        </div>
-                        <div style={{ flex: 1 }}>
-                          <div style={{ fontSize: 13 }}>{t.task}</div>
-                          <div style={{ fontSize: 11, color: T.muted }}>{t.time} · {t.duration} min</div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ))}
+              
+              <div style={{ fontSize: 14, color: T.muted, textAlign: "center", marginTop: 16 }}>
+                ✅ Lernplan erstellt! Alle Aufgaben sind jetzt im Kalender sichtbar.
               </div>
             </div>
           )}
-          {!plan && !loading && <EmptyState icon="🗓️" text="Wähle eine Klausur und erstelle deinen Lernplan." />}
         </>
       )}
     </div>
@@ -2572,7 +2644,7 @@ Fülle days für alle ${maxDays} Tage. Halte tasks kurz (max 6 Wörter). examIds
                       </div>
                     )
                   )}
-                  {!isMobile && entries.slice(0, exam ? 1 : 2).map((e, j) => (
+                  {!isMobile && entries.slice(0, exam ? 2 : 4).map((e, j) => (
                     <div key={j} style={{
                       fontSize: 9, background: (e.examColor || T.accent) + "33",
                       color: e.examColor || T.accent, borderRadius: 4,
@@ -2581,9 +2653,11 @@ Fülle days für alle ${maxDays} Tage. Halte tasks kurz (max 6 Wörter). examIds
                     }}>{e.text || e.task}</div>
                   ))}
                   {isMobile && entries.length > 0 && (
-                    <div style={{ width: 6, height: 6, borderRadius: "50%", background: (entries[0].examColor || T.accent), margin: "0 auto" }} />
+                    <div style={{ fontSize: 8, color: T.muted, textAlign: "center" }}>
+                      {entries.length > 1 ? `+${entries.length - 1}` : "1"}
+                    </div>
                   )}
-                  {!isMobile && entries.length > (exam ? 1 : 2) && <div style={{ fontSize: 9, color: T.muted }}>+{entries.length - (exam ? 1 : 2)}</div>}
+                  {!isMobile && entries.length > (exam ? 2 : 4) && <div style={{ fontSize: 9, color: T.muted }}>+{entries.length - (exam ? 2 : 4)}</div>}
                 </div>
               );
             })}
