@@ -869,7 +869,7 @@ function Dashboard({ tasks, exams, tip, xp, streak, dailyMinutes, usedMinutesTod
                 ✕
               </button>
             </div>
-          ) : `von ${Math.floor(dailyMinutes / 60)}h ${dailyMinutes % 60}m`} 
+          ) : `von ${dailyMinutes} min`} 
           color={T.orange} 
           onClick={() => {
             if (!editingTime) {
@@ -1011,20 +1011,21 @@ function Heute({ tasks, exams, cards, setCards, addXP, dailyMinutes, setDailyMin
     return bPrio - aPrio;
   });
   
-  // ADHS-gerechte Zeitplanung: 25-Minuten Blöcke mit Pausen
+  // ADHS-gerechte Zeitplanung: 25-Minuten Blöcke mit Pausen in der Gesamtzeit
   const todayPlan = [];
   let remainingTime = dailyMinutes;
   let taskCount = 0;
   
   for (const t of sortedTasks) {
     const dur = Math.min(t.duration || 25, 25); // Max 25 Minuten pro Aufgabe
+    
     if (remainingTime >= dur) { 
       todayPlan.push(t); 
       remainingTime -= dur;
       taskCount++;
       
-      // Nach jeder Aufgabe eine Pause einplanen (außer bei letzter)
-      if (remainingTime >= 5 && taskCount < sortedTasks.length) {
+      // Nach jeder Aufgabe eine Pause einplanen (außer bei letzter oder wenn keine Zeit mehr)
+      if (taskCount < sortedTasks.length && remainingTime >= 5) {
         remainingTime -= 5; // 5 Minuten Pause
       }
     }
@@ -4004,11 +4005,32 @@ function FileOverview({ exams, setTab, setPreSelectedExam }) {
 
   const exam = selectedExam ? exams.find(e => e.id === selectedExam) : null;
   
-  // Simulierte Datei-Daten (später aus Datenbank laden)
+  // Fachspezifische Mock-Daten (später aus Datenbank laden)
   const mockFiles = selectedExam ? [
-    { id: 1, name: "Klausur_2023_SS.pdf", type: "pdf", size: "2.4 MB", uploadDate: "2024-03-15", topics: ["Analysis", "Integration"] },
-    { id: 2, name: "Zusammenfassung_Teil1.docx", type: "docx", size: "856 KB", uploadDate: "2024-03-18", topics: ["Grundlagen"] },
-    { id: 3, name: "Übungsblatt_7.jpg", type: "image", size: "1.2 MB", uploadDate: "2024-03-20", topics: ["Differentialrechnung"] },
+    { 
+      id: 1, 
+      name: `${exam?.subject || "Fach"}_Klausur.pdf`, 
+      type: "pdf", 
+      size: "2.4 MB", 
+      uploadDate: todayStr(), 
+      topics: exam?.topics || ["Allgemein"] 
+    },
+    { 
+      id: 2, 
+      name: `${exam?.subject || "Fach"}_Zusammenfassung.docx`, 
+      type: "docx", 
+      size: "856 KB", 
+      uploadDate: todayStr(), 
+      topics: exam?.topics || ["Zusammenfassung"] 
+    },
+    { 
+      id: 3, 
+      name: `${exam?.subject || "Fach"}_Übungen.jpg`, 
+      type: "image", 
+      size: "1.2 MB", 
+      uploadDate: todayStr(), 
+      topics: exam?.topics || ["Übungen"] 
+    },
   ] : [];
 
   return (
