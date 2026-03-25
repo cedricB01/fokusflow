@@ -950,7 +950,7 @@ function Dashboard({ tasks, exams, tip, xp, streak, dailyMinutes, usedMinutesTod
               />
               <span style={{ fontSize: isMobile ? 16 : 26, fontWeight: 800, color: T.orange }}>m</span>
             </div>
-          ) : `${Math.floor(Math.min(plannedMinutesToday, dailyMinutes) / 60)}h ${Math.min(plannedMinutesToday, dailyMinutes) % 60}m`} 
+          ) : `${Math.floor(dailyMinutes / 60)}h ${dailyMinutes % 60}m`} 
           sub={editingTime ? (
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <button 
@@ -1124,23 +1124,24 @@ function Heute({ tasks, exams, cards, setCards, addXP, dailyMinutes, setDailyMin
   let taskCount = 0;
   
   for (const t of sortedTasks) {
-    const dur = Math.min(t.duration || 25, 25); // Max 25 Minuten pro Aufgabe
-    
-    // Prüfen ob Aufgabe + Pause in die verbleibende Zeit passt
+    const dur = 25; // IMMER 25 Minuten pro Aufgabe
     const needsPause = taskCount > 0; // Nach jeder Aufgabe außer der ersten
     const totalTimeNeeded = dur + (needsPause ? 5 : 0);
     
+    // Nur planen wenn Aufgabe + Pause komplett in die Zeit passt
     if (remainingTime >= totalTimeNeeded) { 
-      todayPlan.push(t); 
+      todayPlan.push({ ...t, duration: dur }); // Dauer immer auf 25 setzen
       remainingTime -= dur;
       taskCount++;
       
-      // Pause einplanen (außer bei letzter oder wenn keine Zeit mehr)
-      if (needsPause && remainingTime >= 5) {
-        remainingTime -= 5; // 5 Minuten Pause
+      // Pause direkt einplanen
+      if (needsPause) {
+        remainingTime -= 5;
       }
     }
-    if (remainingTime < 15) break;
+    
+    // Stoppen wenn nicht genug Zeit für einen kompletten Block (Aufgabe + Pause)
+    if (remainingTime < 25) break;
   }
   
   // Erledigte Aufgaben ans Ende anhängen (zum Wiederöffnen)
@@ -2161,7 +2162,7 @@ Fach: ${exam?.subject || "Unbekannt"}`
     setLoading(false);
   };
 
-  const canAnalyze = mode === "manuell" ? !!manualTopics : (!!text || !!file || imageFiles.length > 0);
+  const canAnalyze = mode === "manuell" ? !!manualTopics : (mode === "altklausur" ? (!!text || !!file || imageFiles.length > 0) : (!!text || !!file || imageFiles.length > 0));
 
   return (
     <div style={{ padding: "clamp(12px, 4vw, 32px)", animation: "fadeUp 0.4s ease" }}>
