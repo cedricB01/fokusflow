@@ -350,6 +350,8 @@ export default function App() {
           // Einfache Neustrukturierung der Tasks ohne KI-Aufruf
           redistributeTasks();
         }
+        // Überfällige Tasks automatisch neu verteilen
+        redistributeOverduePlannedTasks();
       }, 1000);
       
       return () => clearTimeout(timeoutId);
@@ -369,6 +371,44 @@ export default function App() {
       }
       return t;
     });
+    setTasks(updatedTasks);
+  };
+
+  // Überfällige geplante Tasks automatisch neu verteilen
+  const redistributeOverduePlannedTasks = () => {
+    const today = todayStr();
+    const overdueTasks = tasks.filter(t => 
+      !t.done && 
+      t.plannedDate && 
+      t.plannedDate < today // Geplantes Datum ist in der Vergangenheit
+    );
+    
+    if (overdueTasks.length === 0) return;
+    
+    // Nächste verfügbare Tage finden (heute + 7 Tage)
+    const nextDays = [];
+    for (let i = 0; i <= 7; i++) {
+      const date = new Date();
+      date.setDate(date.getDate() + i);
+      const dateStr = date.toISOString().split('T')[0];
+      
+      // Prüfen ob der Tag noch Platz hat (max 6 Tasks)
+      const tasksOnDay = tasks.filter(t => t.plannedDate === dateStr && !t.done).length;
+      if (tasksOnDay < 6) {
+        nextDays.push(dateStr);
+      }
+    }
+    
+    // Überfällige Tasks auf verfügbare Tage verteilen
+    const updatedTasks = tasks.map(t => {
+      const overdueIndex = overdueTasks.findIndex(ot => ot.id === t.id);
+      if (overdueIndex === -1) return t;
+      
+      // Task auf den nächsten verfügbaren Tag verschieben
+      const targetDay = nextDays[overdueIndex % nextDays.length];
+      return { ...t, plannedDate: targetDay };
+    });
+    
     setTasks(updatedTasks);
   };
 
