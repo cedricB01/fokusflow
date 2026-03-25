@@ -257,6 +257,7 @@ export default function App() {
   const [dailyMinutes, setDailyMinutes] = useState(60);
   const [cards, setCards] = useState([]);
   const [semesterPlan, setSemesterPlan] = useState(null);
+  const [preSelectedExam, setPreSelectedExam] = useState("");
   const [generatingSemester, setGeneratingSemester] = useState(false);
   const [badges, setBadges] = useState([]);
   const [toast, setToast] = useState(null);
@@ -660,19 +661,20 @@ export default function App() {
 
       {/* Main Content */}
       <main style={{ flex: 1, overflow: "auto", minWidth: 0, maxWidth: "100%" }} className="main-content">
-        {tab === "dashboard" && <Dashboard tasks={tasks} exams={exams} tip={tip} xp={xp} streak={streak} dailyMinutes={dailyMinutes} usedMinutesToday={usedMinutesToday} setTab={setTab} />}
+        {tab === "dashboard" && <Dashboard tasks={tasks} exams={exams} tip={tip} xp={xp} streak={streak} dailyMinutes={dailyMinutes} usedMinutesToday={usedMinutesToday} setTab={setTab} setDailyMinutes={setDailyMinutes} setPreSelectedExam={setPreSelectedExam} />}
         {tab === "heute" && <Heute tasks={todayTasks} exams={exams} cards={cards} setCards={setCards} addXP={addXP} dailyMinutes={dailyMinutes} setDailyMinutes={setDailyMinutes} setActiveTask={setActiveTask} />}
         {tab === "exams" && <Exams exams={exams} setExams={setExams} />}
         {tab === "upload" && <Upload exams={exams} addXP={addXP} onAnalysisComplete={(examId, topics) => {
           setExams(prev => prev.map(e => e.id === examId ? { ...e, topics } : e));
           setTab("plan");
-        }} />}
+        }} preSelectedExam={preSelectedExam} />}
         {tab === "plan" && <Plan exams={exams} setExams={setExams} tasks={tasks} setTasks={setTasks} dailyMinutes={dailyMinutes} />}
         {tab === "kalender" && <Kalender exams={exams} tasks={tasks} setTasks={setTasks} dailyMinutes={dailyMinutes} addXP={addXP} semesterPlan={semesterPlan} setSemesterPlan={setSemesterPlan} generating={generatingSemester} setGenerating={setGeneratingSemester} />}
         {tab === "focus" && <Focus addXP={addXP} markStudiedToday={markStudiedToday} />}
         {tab === "karten" && <Flashcards exams={exams} cards={cards} setCards={setCards} addXP={addXP} />}
         {tab === "badges" && <BadgesTab badges={badges} xp={xp} streak={streak} tasks={tasks} onImport={handleDataImport} />}
         {tab === "chat" && <Chat exams={exams} tasks={tasks} />}
+        {tab === "dateien" && <FileOverview exams={exams} setTab={setTab} setPreSelectedExam={setPreSelectedExam} />}
         {tab === "profil" && <Profile user={user} userPlan={userPlan} setUserPlan={setUserPlan} xp={xp} streak={streak} badges={badges} resetData={resetData} />}
       </main>
 
@@ -708,26 +710,6 @@ export default function App() {
             );
           })}
         </div>
-        
-        {/* Mobile Abmeldung */}
-        <div style={{ padding: "8px 16px", borderTop: `1px solid ${T.border}` }}>
-          <button 
-            onClick={async () => { await signOut(); resetData(); }} 
-            style={{ 
-              width: "100%", 
-              background: "transparent", 
-              border: `1px solid ${T.border}`,
-              borderRadius: 8, 
-              padding: "8px 12px", 
-              color: T.muted, 
-              cursor: "pointer",
-              fontSize: 12,
-              textAlign: "center"
-            }}
-          >
-            ↩ Abmelden
-          </button>
-        </div>
       </div>
     </div>
   );
@@ -736,16 +718,45 @@ export default function App() {
 // ════════════════════════════════════════════════
 // DASHBOARD
 // ════════════════════════════════════════════════
-function Dashboard({ tasks, exams, tip, xp, streak, dailyMinutes, usedMinutesToday, setTab }) {
+function Dashboard({ tasks, exams, tip, xp, streak, dailyMinutes, usedMinutesToday, setTab, setDailyMinutes, setPreSelectedExam }) {
   const isMobile = useIsMobile();
+  const [editingTime, setEditingTime] = useState(false);
+  const [tempMin, setTempMin] = useState(dailyMinutes);
   const doneTasks = tasks.filter(t => t.done).length;
   const totalTasks = tasks.length;
   const pct = totalTasks ? Math.round((doneTasks / totalTasks) * 100) : 0;
   const sortedExams = [...exams].sort((a, b) => calcPriority(b) - calcPriority(a));
-  // Nur heutige Tasks zählen für den Fokus
+  
+  // Smarter Tagesplan: nur Tasks zählen, die tatsächlich in die Zeit passen
+  let timeLeft = dailyMinutes;
+  const todayTasks = [];
   const todayDone = tasks.filter(t => t.done && t.doneDate === todayStr()).length;
-  const todayTotal = tasks.filter(t => !t.doneDate && (!t.plannedDate || t.plannedDate <= todayStr())).length + todayDone;
+  
+  // Update tempMin when dailyMinutes changes
+  useEffect(() => {
+    setTempMin(dailyMinutes);
+  }, [dailyMinutes]);
+  
+  // Ungeplante nach Priorität sortieren und passende auswählen
+  const unplannedTasks = tasks.filter(t => !t.doneDate && (!t.plannedDate || t.plannedDate <= todayStr()));
+  const sortedTasks = [...unplannedTasks].sort((a, b) => {
+    const aPrio = (a.priority || 1) * 2;
+    const bPrio = (b.priority || 1) * 2;
+    return bPrio - aPrio;
+  });
+  
+  for (const t of sortedTasks) {
+    const dur = t.duration || 25;
+    if (timeLeft >= dur) { 
+      todayTasks.push(t); 
+      timeLeft -= dur; 
+    }
+    if (timeLeft < 15) break;
+  }
+  
+  const todayTotal = todayTasks.length + todayDone;
   const todayPct = todayTotal ? Math.round((todayDone / todayTotal) * 100) : 0;
+  const plannedMinutesToday = todayTasks.reduce((s, t) => s + (t.duration || 25), 0);
 
   return (
     <div style={{ padding: isMobile ? 16 : 32, animation: "fadeUp 0.4s ease" }}>
@@ -758,7 +769,26 @@ function Dashboard({ tasks, exams, tip, xp, streak, dailyMinutes, usedMinutesTod
 
       {/* Heute-Fokus Box – prominent wenn Tasks vorhanden */}
       {todayTotal > 0 && (
-        <div style={{ background: todayDone >= todayTotal ? `linear-gradient(135deg, ${T.green}22, ${T.card})` : `linear-gradient(135deg, ${T.accentSoft}, ${T.card})`, border: `2px solid ${todayDone >= todayTotal ? T.green : T.accent}44`, borderRadius: 16, padding: "16px 20px", marginBottom: isMobile ? 14 : 20 }}>
+        <div 
+          onClick={() => setTab("heute")}
+          style={{ 
+            background: todayDone >= todayTotal ? `linear-gradient(135deg, ${T.green}22, ${T.card})` : `linear-gradient(135deg, ${T.accentSoft}, ${T.card})`, 
+            border: `2px solid ${todayDone >= todayTotal ? T.green : T.accent}44`, 
+            borderRadius: 16, 
+            padding: "16px 20px", 
+            marginBottom: isMobile ? 14 : 20,
+            cursor: "pointer",
+            transition: "all 0.2s ease"
+          }}
+          onMouseEnter={(e) => {
+            e.target.style.transform = "translateY(-2px)";
+            e.target.style.boxShadow = `0 4px 12px ${todayDone >= todayTotal ? T.green : T.accent}22`;
+          }}
+          onMouseLeave={(e) => {
+            e.target.style.transform = "translateY(0)";
+            e.target.style.boxShadow = "none";
+          }}
+        >
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
             <div>
               <div style={{ fontSize: 11, color: todayDone >= todayTotal ? T.green : T.accent, fontWeight: 600, marginBottom: 3 }}>HEUTE</div>
@@ -773,7 +803,7 @@ function Dashboard({ tasks, exams, tip, xp, streak, dailyMinutes, usedMinutesTod
           </div>
           {todayDone < todayTotal && (
             <div style={{ fontSize: 12, color: T.muted, marginTop: 8 }}>
-              Noch {todayTotal - todayDone} Aufgaben für heute · {usedMinutesToday} min geplant
+              Noch {todayTotal - todayDone} Aufgaben für heute · {plannedMinutesToday} min geplant
             </div>
           )}
         </div>
@@ -789,9 +819,68 @@ function Dashboard({ tasks, exams, tip, xp, streak, dailyMinutes, usedMinutesTod
 
       <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "1fr 1fr 1fr 1fr", gap: isMobile ? 10 : 16, marginBottom: isMobile ? 14 : 20, width: "100%" }}>
         <StatCard icon="📊" label="Gesamt" value={`${pct}%`} sub={`${doneTasks}/${totalTasks}`} color={T.green} />
-        <StatCard icon="⚡" label="XP" value={xp} sub={`Level ${getLevel(xp)}`} color={T.accent} />
-        <StatCard icon={getStreakInfo(streak).icon} label="Streak" value={getStreakInfo(streak).label} sub={getStreakInfo(streak).sub} color={getStreakInfo(streak).color} />
-        <StatCard icon="⏱" label="Heute" value={`${Math.min(usedMinutesToday, dailyMinutes)}m`} sub={`von ${dailyMinutes} min`} color={T.orange} />
+        <StatCard icon="⚡" label="XP" value={xp} sub={`Level ${getLevel(xp)}`} color={T.accent} onClick={() => setTab("badges")} />
+        <StatCard icon={getStreakInfo(streak).icon} label="Streak" value={getStreakInfo(streak).label} sub={getStreakInfo(streak).sub} color={getStreakInfo(streak).color} onClick={() => setTab("badges")} />
+        <StatCard 
+          icon="⏱" 
+          label="Heute" 
+          value={editingTime ? (
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <input 
+                type="number" 
+                value={tempMin} 
+                onChange={e => setTempMin(Number(e.target.value))}
+                onClick={(e) => e.stopPropagation()}
+                style={{ 
+                  width: 60, 
+                  background: T.surface, 
+                  border: `1px solid ${T.accent}`, 
+                  borderRadius: 6, 
+                  padding: "4px 8px", 
+                  color: T.text, 
+                  fontSize: isMobile ? 16 : 26,
+                  fontWeight: 800,
+                  fontFamily: T.font
+                }} 
+              />
+              <span style={{ fontSize: isMobile ? 16 : 26, fontWeight: 800, color: T.orange }}>m</span>
+            </div>
+          ) : `${Math.min(plannedMinutesToday, dailyMinutes)}m`} 
+          sub={editingTime ? (
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <button 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setDailyMinutes(tempMin);
+                  setEditingTime(false);
+                }}
+                style={{ background: T.green, border: "none", borderRadius: 6, padding: "4px 8px", color: "white", cursor: "pointer", fontSize: 10 }}
+              >
+                ✓
+              </button>
+              <button 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setTempMin(dailyMinutes);
+                  setEditingTime(false);
+                }}
+                style={{ background: T.red, border: "none", borderRadius: 6, padding: "4px 8px", color: "white", cursor: "pointer", fontSize: 10 }}
+              >
+                ✕
+              </button>
+            </div>
+          ) : `von ${dailyMinutes} min`} 
+          color={T.orange} 
+          onClick={() => {
+            if (!editingTime) {
+              setTab("heute");
+            }
+          }}
+          onDoubleClick={(e) => {
+            e.stopPropagation();
+            setEditingTime(true);
+          }}
+        />
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1.5fr 1fr", gap: isMobile ? 12 : 20, width: "100%", minWidth: 0 }}>
@@ -825,8 +914,8 @@ function Dashboard({ tasks, exams, tip, xp, streak, dailyMinutes, usedMinutesTod
                 <div style={{ marginTop: 12 }}>
                   <button 
                     onClick={() => {
+                      setPreSelectedExam(e.id);
                       setTab("upload");
-                      // TODO: Pass selected exam to upload component
                     }}
                     style={{
                       background: T.surface,
@@ -1751,10 +1840,10 @@ function Exams({ exams, setExams }) {
 // ════════════════════════════════════════════════
 // UPLOAD
 // ════════════════════════════════════════════════
-function Upload({ exams, addXP, onAnalysisComplete }) {
+function Upload({ exams, addXP, onAnalysisComplete, preSelectedExam = "" }) {
   const [file, setFile] = useState(null);
   const [text, setText] = useState("");
-  const [selectedExam, setSelectedExam] = useState("");
+  const [selectedExam, setSelectedExam] = useState(preSelectedExam);
   const [manualTopics, setManualTopics] = useState("");
   const [mode, setMode] = useState("skript"); // skript | altklausur | manuell
   const [result, setResult] = useState(null);
@@ -1763,6 +1852,13 @@ function Upload({ exams, addXP, onAnalysisComplete }) {
 
   const [imageFiles, setImageFiles] = useState([]); // Fotos/Bilder der Klausur
   const imageRef = useRef();
+
+  // Update selected exam when preSelectedExam changes
+  useEffect(() => {
+    if (preSelectedExam) {
+      setSelectedExam(preSelectedExam);
+    }
+  }, [preSelectedExam]);
 
   const getContent = async () => {
     if (text) return { type: "text", content: text };
@@ -3449,10 +3545,35 @@ function PageHeader({ title, sub }) {
     </div>
   );
 }
-function StatCard({ icon, label, value, sub, color }) {
+function StatCard({ icon, label, value, sub, color, onClick, onDoubleClick }) {
   const isMobile = useIsMobile();
   return (
-    <div style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 14, padding: isMobile ? "14px 12px" : "20px", position: "relative", overflow: "hidden" }}>
+    <div 
+      onClick={onClick}
+      onDoubleClick={onDoubleClick}
+      style={{ 
+        background: T.card, 
+        border: `1px solid ${T.border}`, 
+        borderRadius: 14, 
+        padding: isMobile ? "14px 12px" : "20px", 
+        position: "relative", 
+        overflow: "hidden",
+        cursor: onClick ? "pointer" : "default",
+        transition: "all 0.2s ease"
+      }}
+      onMouseEnter={(e) => {
+        if (onClick) {
+          e.target.style.transform = "translateY(-2px)";
+          e.target.style.boxShadow = `0 4px 12px ${color}22`;
+        }
+      }}
+      onMouseLeave={(e) => {
+        if (onClick) {
+          e.target.style.transform = "translateY(0)";
+          e.target.style.boxShadow = "none";
+        }
+      }}
+    >
       <div style={{ fontSize: isMobile ? 18 : 24, marginBottom: isMobile ? 6 : 10 }}>{icon}</div>
       <div style={{ fontSize: isMobile ? 10 : 11, color: T.muted, marginBottom: 3 }}>{label}</div>
       <div style={{ fontFamily: T.font, fontSize: isMobile ? 18 : 26, fontWeight: 800, color, lineHeight: 1.1 }}>{value}</div>
@@ -3569,8 +3690,24 @@ function Profile({ user, userPlan, setUserPlan, xp, streak, badges, resetData })
 
   const handlePlanChange = async () => {
     if (selectedPlan !== userPlan) {
-      // TODO: Implement payment processing
-      alert(`Plan-Wechsel zu ${selectedPlan} wird implementiert!`);
+      try {
+        // Plan in Supabase speichern
+        const { error } = await supabase
+          .from('profiles')
+          .update({ plan: selectedPlan })
+          .eq('id', user.id);
+        
+        if (error) throw error;
+        
+        // Lokalen State aktualisieren
+        setUserPlan(selectedPlan);
+        
+        // Erfolgsmeldung
+        alert(`Plan erfolgreich gewechselt zu ${selectedPlan}!`);
+      } catch (err) {
+        console.error("Fehler beim Plan-Wechsel:", err);
+        alert("Fehler beim Plan-Wechsel. Bitte versuche es später erneut.");
+      }
     }
     setEditingPlan(false);
   };
@@ -3787,6 +3924,165 @@ function Profile({ user, userPlan, setUserPlan, xp, streak, badges, resetData })
               </button>
             </div>
           </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ════════════════════════════════════════════════
+// DATEI-ÜBERSICHT
+// ════════════════════════════════════════════════
+function FileOverview({ exams, setTab, setPreSelectedExam }) {
+  const isMobile = useIsMobile();
+  const [selectedExam, setSelectedExam] = useState("");
+
+  const exam = selectedExam ? exams.find(e => e.id === selectedExam) : null;
+  
+  // Simulierte Datei-Daten (später aus Datenbank laden)
+  const mockFiles = selectedExam ? [
+    { id: 1, name: "Klausur_2023_SS.pdf", type: "pdf", size: "2.4 MB", uploadDate: "2024-03-15", topics: ["Analysis", "Integration"] },
+    { id: 2, name: "Zusammenfassung_Teil1.docx", type: "docx", size: "856 KB", uploadDate: "2024-03-18", topics: ["Grundlagen"] },
+    { id: 3, name: "Übungsblatt_7.jpg", type: "image", size: "1.2 MB", uploadDate: "2024-03-20", topics: ["Differentialrechnung"] },
+  ] : [];
+
+  return (
+    <div style={{ padding: isMobile ? 16 : 32, animation: "fadeUp 0.4s ease" }}>
+      <div style={{ marginBottom: isMobile ? 16 : 24 }}>
+        <div style={{ fontFamily: T.font, fontSize: isMobile ? 20 : 26, fontWeight: 800, letterSpacing: -0.5 }}>
+          📁 Datei-Übersicht
+        </div>
+        <div style={{ color: T.muted, marginTop: 4 }}>Alle Dokumente pro Fach im Überblick</div>
+      </div>
+
+      {/* Fach-Auswahl */}
+      <div style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 16, padding: 20, marginBottom: 24 }}>
+        <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 12 }}>Fach auswählen</div>
+        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(auto-fit, minmax(200px, 1fr))", gap: 12 }}>
+          {exams.map(e => (
+            <button
+              key={e.id}
+              onClick={() => setSelectedExam(e.id)}
+              style={{
+                background: selectedExam === e.id ? T.accentSoft : T.surface,
+                border: `1px solid ${selectedExam === e.id ? T.accent : T.border}`,
+                borderRadius: 12,
+                padding: "12px 16px",
+                textAlign: "left",
+                cursor: "pointer",
+                transition: "all 0.2s ease"
+              }}
+            >
+              <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>{e.subject}</div>
+              <div style={{ fontSize: 11, color: T.muted }}>
+                {daysUntil(e.date) === 0 ? "Heute!" : `${daysUntil(e.date)} Tage`}
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Datei-Liste */}
+      {exam && (
+        <div style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 16, padding: 20 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+            <div>
+              <div style={{ fontSize: 16, fontWeight: 600 }}>{exam.subject}</div>
+              <div style={{ fontSize: 12, color: T.muted }}>{mockFiles.length} Dateien</div>
+            </div>
+            <button
+              onClick={() => {
+                setPreSelectedExam(exam.id);
+                setTab("upload");
+              }}
+              style={{
+                background: T.accent,
+                border: "none",
+                borderRadius: 8,
+                padding: "8px 16px",
+                color: "white",
+                cursor: "pointer",
+                fontSize: 12,
+                fontWeight: 600
+              }}
+            >
+              + Hochladen
+            </button>
+          </div>
+
+          {mockFiles.length === 0 ? (
+            <div style={{ textAlign: "center", padding: "40px 0", color: T.muted }}>
+              <div style={{ fontSize: 48, marginBottom: 12 }}>📂</div>
+              <div style={{ fontSize: 14 }}>Noch keine Dateien für {exam.subject}</div>
+            </div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              {mockFiles.map(file => (
+                <div key={file.id} style={{
+                  background: T.surface,
+                  border: `1px solid ${T.border}`,
+                  borderRadius: 12,
+                  padding: "16px",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center"
+                }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                    <div style={{
+                      width: 40,
+                      height: 40,
+                      borderRadius: 8,
+                      background: file.type === "pdf" ? T.red + "22" : file.type === "image" ? T.green + "22" : T.blue + "22",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontSize: 20
+                    }}>
+                      {file.type === "pdf" ? "📄" : file.type === "image" ? "🖼️" : "📝"}
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 14, fontWeight: 600 }}>{file.name}</div>
+                      <div style={{ fontSize: 11, color: T.muted }}>
+                        {file.size} • {file.uploadDate} • {file.topics.join(", ")}
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <button style={{
+                      background: T.surface,
+                      border: `1px solid ${T.border}`,
+                      borderRadius: 6,
+                      padding: "6px 12px",
+                      color: T.muted,
+                      cursor: "pointer",
+                      fontSize: 11
+                    }}>
+                      🗑️
+                    </button>
+                    <button style={{
+                      background: T.surface,
+                      border: `1px solid ${T.border}`,
+                      borderRadius: 6,
+                      padding: "6px 12px",
+                      color: T.muted,
+                      cursor: "pointer",
+                      fontSize: 11
+                    }}>
+                      🔄
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {!exam && (
+        <div style={{ textAlign: "center", padding: "60px 0", color: T.muted }}>
+          <div style={{ fontSize: 64, marginBottom: 16 }}>📁</div>
+          <div style={{ fontSize: 16, marginBottom: 8 }}>Wähle ein Fach aus</div>
+          <div style={{ fontSize: 14 }}>Um die hochgeladenen Dateien zu sehen</div>
         </div>
       )}
     </div>
