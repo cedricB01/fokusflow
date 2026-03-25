@@ -1188,7 +1188,7 @@ function Heute({ tasks, exams, cards, setCards, addXP, dailyMinutes, setDailyMin
     
     // Strikte Zeitbegrenzung: nur planen wenn Aufgabe + Pause komplett in die verfügbare Zeit passt
     if (remainingTime >= totalTimeNeeded) { 
-      todayPlan.push(t); // Original Task mit eigener Dauer behalten
+      todayPlan.push({ ...t, duration: dur }); // Task mit korrigierter Dauer (max 25min)
       remainingTime -= dur;
       taskCount++;
       
@@ -2043,6 +2043,7 @@ Max 5 Fragen, 4 Optionen, correct = Index der richtigen Antwort.`;
 // KLAUSUREN
 // ════════════════════════════════════════════════
 function Exams({ exams, setExams, setPreSelectedExam, setTab }) {
+  const isMobile = useIsMobile();
   const [form, setForm] = useState({ subject: "", date: "", topics: "" });
   const colors = [T.accent, T.green, T.orange, "#f472b6", "#38bdf8"];
 
@@ -2097,11 +2098,13 @@ function Exams({ exams, setExams, setPreSelectedExam, setTab }) {
                       background: T.accent,
                       border: "none",
                       borderRadius: 8,
-                      padding: "6px 12px",
+                      padding: isMobile ? "8px 16px" : "6px 12px",
                       color: "white",
                       cursor: "pointer",
-                      fontSize: 12,
-                      fontWeight: 600
+                      fontSize: isMobile ? 14 : 12,
+                      fontWeight: 600,
+                      minHeight: isMobile ? 36 : "auto",
+                      touchAction: "manipulation"
                     }}
                   >
                     📁 Unterlagen
@@ -2115,11 +2118,13 @@ function Exams({ exams, setExams, setPreSelectedExam, setTab }) {
                       background: T.surface,
                       border: `1px solid ${T.border}`,
                       borderRadius: 8,
-                      padding: "6px 12px",
+                      padding: isMobile ? "8px 16px" : "6px 12px",
                       color: T.muted,
                       cursor: "pointer",
-                      fontSize: 12,
-                      fontWeight: 600
+                      fontSize: isMobile ? 14 : 12,
+                      fontWeight: 600,
+                      minHeight: isMobile ? 36 : "auto",
+                      touchAction: "manipulation"
                     }}
                   >
                     📋 Dateien
@@ -2131,11 +2136,13 @@ function Exams({ exams, setExams, setPreSelectedExam, setTab }) {
                       border: "none",
                       color: T.red,
                       cursor: "pointer",
-                      fontSize: 12,
-                      fontWeight: 600
+                      fontSize: isMobile ? 16 : 14,
+                      padding: isMobile ? "8px 12px" : "6px 8px",
+                      minHeight: isMobile ? 36 : "auto",
+                      touchAction: "manipulation"
                     }}
                   >
-                    🗑 Löschen
+                    🗑️
                   </button>
                 </div>
 
@@ -4335,9 +4342,26 @@ function FileOverview({ exams, setTab, setPreSelectedExam }) {
 
   const exam = selectedExam ? exams.find(e => e.id === selectedExam) : null;
   
-  // Echte Datei-Daten - nur wenn tatsächlich Dokumente hochgeladen wurden
-  // Später aus Datenbank laden, aktuell leer wenn keine echten Uploads existieren
-  const examFiles = []; // TODO: Aus Datenbank laden
+  // Demo-Datei-Daten für verschiedene Fächer
+  const getDemoFiles = (examId) => {
+    const demoFiles = {
+      "math1": [
+        { name: "Analysis_Skript.pdf", type: "PDF", size: "2.3 MB", uploadDate: "2024-03-20" },
+        { name: "Integralrechnung.pdf", type: "PDF", size: "1.8 MB", uploadDate: "2024-03-18" }
+      ],
+      "phys1": [
+        { name: "Mechanik_Vorlesung.pdf", type: "PDF", size: "3.1 MB", uploadDate: "2024-03-19" },
+        { name: "Übungsblatt_1.pdf", type: "PDF", size: "856 KB", uploadDate: "2024-03-17" }
+      ],
+      "info1": [
+        { name: "Algorithmen_Skript.pdf", type: "PDF", size: "1.5 MB", uploadDate: "2024-03-20" },
+        { name: "Datenbanken.pdf", type: "PDF", size: "2.0 MB", uploadDate: "2024-03-16" }
+      ]
+    };
+    return demoFiles[examId] || [];
+  };
+
+  const examFiles = exam ? getDemoFiles(exam.id) : [];
 
   return (
     <div style={{ padding: isMobile ? 16 : 32, animation: "fadeUp 0.4s ease" }}>
