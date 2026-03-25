@@ -1280,6 +1280,8 @@ function Heute({ tasks, exams, cards, setCards, addXP, dailyMinutes, setDailyMin
     return bPrio - aPrio;
   });
   
+  const doneToday = tasks.filter(t => t.done && t.doneDate === todayStr());
+  
   // ADHS-gerechte Zeitplanung: 25-Minuten Blöcke mit Pausen in der Gesamtzeit
   const todayPlan = [];
   let remainingTime = dailyMinutes;
