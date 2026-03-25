@@ -139,14 +139,14 @@ async function callClaude(messages, systemPrompt = "") {
 
 async function callClaudeLarge(messages, systemPrompt = "") {
   try {
-    const res = await fetch("/api/claude", {
+    const res = await fetch("http://localhost:3001/api/claude", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "claude-sonnet-4-20250514",
-        max_tokens: 8000,
-        system: systemPrompt,
+        model: "claude-3-sonnet-20240229",
+        max_tokens: 4000,
         messages,
+        system: systemPrompt
       }),
     });
     if (!res.ok) {
