@@ -1310,9 +1310,27 @@ function Heute({ tasks, exams, cards, setCards, addXP, dailyMinutes, setDailyMin
     }
   }
 
-  // Test API beim Laden der Component
+  // Test Claude API
+  async function testClaudeAPI() {
+    try {
+      const res = await fetch("/api/claude", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ test: true }),
+      });
+      const data = await res.json();
+      console.log("Claude API Test Result:", data);
+      return data;
+    } catch (error) {
+      console.error("Claude API Test Error:", error);
+      return null;
+    }
+  }
+
+  // Test APIs beim Laden der Component
   useEffect(() => {
     testAPI();
+    testClaudeAPI();
   }, []);
 
   // Update temp state when dailyMinutes changes
