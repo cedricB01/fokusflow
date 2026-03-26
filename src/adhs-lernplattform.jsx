@@ -1337,7 +1337,8 @@ function Heute({ tasks, exams, cards, setCards, addXP, dailyMinutes, setDailyMin
     console.log("Supabase Debug:", {
       url: process.env.REACT_APP_SUPABASE_URL,
       hasKey: !!process.env.REACT_APP_SUPABASE_ANON_KEY,
-      keyLength: process.env.REACT_APP_SUPABASE_ANON_KEY?.length || 0
+      keyLength: process.env.REACT_APP_SUPABASE_ANON_KEY?.length || 0,
+      keyStart: process.env.REACT_APP_SUPABASE_ANON_KEY?.substring(0, 10) + "..."
     });
   }, []);
 
