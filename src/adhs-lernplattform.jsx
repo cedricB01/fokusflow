@@ -1330,8 +1330,9 @@ function Heute({ tasks, exams, cards, setCards, addXP, dailyMinutes, setDailyMin
 
   // Test APIs beim Laden der Component
   useEffect(() => {
-    testAPI();
-    testClaudeAPI();
+    // Tests entfernt um Cache Probleme zu vermeiden
+    // testAPI();
+    // testClaudeAPI();
     
     // Supabase Debug
     console.log("Supabase Debug:", {
