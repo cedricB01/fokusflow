@@ -3017,7 +3017,7 @@ function Kalender({ exams, tasks, setTasks, dailyMinutes, addXP, semesterPlan, s
     // Tatsächliche Zeit bis zur letzten Klausur planen
     const maxDays = Math.min(
       Math.max(...examList.map(e => e.daysLeft), 0),
-      60 // Max 60 Tage auf einmal wegen Token-Limit
+      30 // Max 30 Tage auf einmal wegen Token-Limit
     );
     
     // Debug: Überprüfen ob maxDays korrekt berechnet wird
