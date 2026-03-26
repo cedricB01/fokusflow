@@ -3033,7 +3033,9 @@ function Kalender({ exams, tasks, setTasks, dailyMinutes, addXP, semesterPlan, s
     const prompt = `Plan ${maxDays} Tage. Fächer: ${examList.map(e => `${e.subject}(${e.daysLeft})`).join(",")}. Heute: ${todayFormatted}. Täglich: ${dailyMinutes}min. Letzte Klausur: ${Math.max(...examList.map(ex => ex.daysLeft))} Tage.
 
 NUR JSON (max 200 Zeichen):
-{"overview":"Plan ${maxDays} Tage","days":{"${todayFormatted}":[{"task":"Lernen","duration":20,"examId":"${examList[0]?.id || ""}"}]}}`;
+{"overview":"Plan ${maxDays} Tage","days":{"${todayFormatted}":[{"task":"Lernen","duration":20,"examId":"${examList[0]?.id || ""}"}]}}
+
+examIds: ${examList.map(e => e.id).join(",")}`;
 
     try {
       const raw = await callClaudeLarge([{ role: "user", content: prompt }]);
