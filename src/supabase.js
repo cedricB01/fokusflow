@@ -123,6 +123,8 @@ export const saveSemesterPlan = async (userId, plan) => {
   await supabase.from('semester_plans').upsert({
     user_id: userId, overview: plan.overview,
     days: plan.days, generated_at: plan.generatedAt,
+  }, {
+    onConflict: 'user_id'
   });
 };
 
