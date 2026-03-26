@@ -3035,6 +3035,8 @@ function Kalender({ exams, tasks, setTasks, dailyMinutes, addXP, semesterPlan, s
 Fächer: ${examList.map(e => `${e.subject}(id=${e.id},klausur=${e.date},tage=${e.daysLeft})`).join(" | ")}
 Heute: ${todayFormatted}, Täglich: ${dailyMinutes}min, Planung: nächste ${maxDays} Tage bis ${examList.find(e => e.daysLeft === Math.max(...examList.map(ex => ex.daysLeft)))?.date}.
 
+WICHTIG: Du musst GENAU ${maxDays} Tage planen - nicht mehr, nicht weniger! Die letzte Klausur ist am ${Math.max(...examList.map(ex => ex.daysLeft))} Tagen von heute.
+
 Regeln: Dringendste Fächer priorisieren. Letzte 3 Tage vor Klausur = Wiederholung. Max 2-3 Einheiten/Tag.
 
 NUR reines JSON:
