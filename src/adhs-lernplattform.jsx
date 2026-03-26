@@ -882,7 +882,13 @@ export default function App() {
       {/* Mobile Bottom Navigation */}
       <div className="mobile-nav" style={{ display: "none", position: "fixed", bottom: 0, left: 0, right: 0, background: T.surface, borderTop: `1px solid ${T.border}`, zIndex: 100, paddingBottom: "env(safe-area-inset-bottom, 8px)" }}>
         <div style={{ display: "flex", justifyContent: "space-around", alignItems: "stretch" }}>
-          {navItems.map((n) => {
+          {[
+            { id: "dashboard", icon: "⚡", label: "Start" },
+            { id: "heute", icon: "📋", label: "Heute" },
+            { id: "kalender", icon: "🗓️", label: "Kalender" },
+            { id: "exams", icon: "📅", label: "Klausuren" },
+            { id: "profil", icon: "👤", label: "Profil" },
+          ].map((n) => {
             const badge = n.id === "heute" ? todayTasks.length : 0;
             return (
               <button key={n.id} onClick={() => switchTab(n.id)} style={{
