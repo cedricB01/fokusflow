@@ -3020,11 +3020,12 @@ function Kalender({ exams, tasks, setTasks, dailyMinutes, addXP, semesterPlan, s
       7 // Mindestens 7 Tage planen
     );
     
-    // Debug: Ausgabe der Berechnung
+    // Debug: Überprüfen ob maxDays korrekt berechnet wird
     console.log("Semesterplan Debug:", {
       examCount: examList.length,
       examDays: examList.map(e => ({ subject: e.subject, daysLeft: e.daysLeft, date: e.date })),
-      maxDays: maxDays
+      maxDays: maxDays,
+      allDaysLeft: examList.map(e => e.daysLeft)
     });
 
     const todayFormatted = today.getFullYear()+'-'+String(today.getMonth()+1).padStart(2,'0')+'-'+String(today.getDate()).padStart(2,'0');
