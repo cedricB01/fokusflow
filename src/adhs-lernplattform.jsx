@@ -694,7 +694,6 @@ export default function App() {
     { id: "heute", icon: "📋", label: "Heute" },
     { id: "exams", icon: "📅", label: "Klausuren" },
     { id: "upload", icon: "📄", label: "Unterlagen" },
-    { id: "plan", icon: "📊", label: "Lernplan" },
     { id: "karten", icon: "🃏", label: "Flashcards" },
     { id: "focus", icon: "🎯", label: "Fokus" },
     { id: "badges", icon: "🏅", label: "Badges" },
