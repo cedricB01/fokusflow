@@ -3030,9 +3030,11 @@ function Kalender({ exams, tasks, setTasks, dailyMinutes, addXP, semesterPlan, s
 
     const todayFormatted = today.getFullYear()+'-'+String(today.getMonth()+1).padStart(2,'0')+'-'+String(today.getDate()).padStart(2,'0');
 
-    const prompt = `Plan ${maxDays} Tage. Fächer: ${examList.map(e => `${e.subject}(${e.daysLeft})`).join(",")}. Heute: ${todayFormatted}. Täglich: ${dailyMinutes}min. Letzte Klausur: ${Math.max(...examList.map(ex => ex.daysLeft))} Tage.
+    const prompt = `Generiere Plan für ALLE ${maxDays} Tage von heute bis letzter Exam. Fächer: ${examList.map(e => `${e.subject}(${e.daysLeft})`).join(",")}. Heute: ${todayFormatted}. Täglich: ${dailyMinutes}min.
 
-NUR JSON (max 200 Zeichen):
+WICHTIG: Du musst GENAU ${maxDays} Tage generieren! Jeden einzelnen Tag!
+
+NUR JSON:
 {"overview":"Plan ${maxDays} Tage","days":{"${todayFormatted}":[{"task":"Lernen","duration":20,"examId":"${examList[0]?.id || ""}"}]}}
 
 examIds: ${examList.map(e => e.id).join(",")}`;
