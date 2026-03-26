@@ -1294,55 +1294,6 @@ function Heute({ tasks, exams, cards, setCards, addXP, dailyMinutes, setDailyMin
   const [prepCards, setPrepCards] = useState([]);
   const [showMorgen, setShowMorgen] = useState(false);
 
-  // Test API Connection
-  async function testAPI() {
-    try {
-      const res = await fetch("/api/test", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ test: true }),
-      });
-      const data = await res.json();
-      console.log("API Test Result:", data);
-      return data;
-    } catch (error) {
-      console.error("API Test Error:", error);
-      return null;
-    }
-  }
-
-  // Test Claude API
-  async function testClaudeAPI() {
-    try {
-      const res = await fetch("/api/anthropic", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ test: true }),
-      });
-      const data = await res.json();
-      console.log("Claude API Test Result:", data);
-      return data;
-    } catch (error) {
-      console.error("Claude API Test Error:", error);
-      return null;
-    }
-  }
-
-  // Test APIs beim Laden der Component
-  useEffect(() => {
-    // Tests entfernt um Cache Probleme zu vermeiden
-    // testAPI();
-    // testClaudeAPI();
-    
-    // Supabase Debug
-    console.log("Supabase Debug:", {
-      url: process.env.REACT_APP_SUPABASE_URL,
-      hasKey: !!process.env.REACT_APP_SUPABASE_ANON_KEY,
-      keyLength: process.env.REACT_APP_SUPABASE_ANON_KEY?.length || 0,
-      keyStart: process.env.REACT_APP_SUPABASE_ANON_KEY?.substring(0, 10) + "..."
-    });
-  }, []);
-
   // Update temp state when dailyMinutes changes
   useEffect(() => {
     setTempHours(Math.floor(dailyMinutes / 60));
