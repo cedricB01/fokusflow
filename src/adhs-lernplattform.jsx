@@ -882,30 +882,20 @@ export default function App() {
       {/* Mobile Bottom Navigation */}
       <div className="mobile-nav" style={{ display: "none", position: "fixed", bottom: 0, left: 0, right: 0, background: T.surface, borderTop: `1px solid ${T.border}`, zIndex: 100, paddingBottom: "env(safe-area-inset-bottom, 8px)" }}>
         <div style={{ display: "flex", justifyContent: "space-around", alignItems: "stretch" }}>
-          {[
-            { id: "dashboard", icon: "⚡", label: "Start" },
-            { id: "heute", icon: "📋", label: "Heute" },
-            { id: "kalender", icon: "🗓️", label: "Plan" },
-            { id: "karten", icon: "🃏", label: "Karten" },
-            { id: "focus", icon: "🎯", label: "Fokus" },
-            { id: "profil", icon: "👤", label: "Profil" },
-          ].map(n => {
-            const isActive = tab === n.id;
+          {navItems.map((n) => {
+            const badge = n.id === "heute" ? todayTasks.length : 0;
             return (
               <button key={n.id} onClick={() => switchTab(n.id)} style={{
-                flex: 1, display: "flex", flexDirection: "column", alignItems: "center",
-                justifyContent: "center", gap: 4, background: "transparent", border: "none",
-                color: isActive ? T.accent : T.muted, cursor: "pointer",
-                padding: "12px 4px 10px", minHeight: 64, position: "relative",
-                WebkitTapHighlightColor: "transparent",
+                display: "flex", flexDirection: "column", alignItems: "center", gap: 4, padding: "8px 4px",
+                background: tab === n.id ? T.accentSoft : "transparent",
+                border: "none", color: tab === n.id ? T.text : T.muted,
+                cursor: "pointer", fontSize: 20, fontFamily: T.body, textAlign: "center",
+                transition: "all 0.15s", position: "relative", flex: 1,
               }}>
-                {isActive && (
-                  <div style={{ position: "absolute", top: 0, left: "20%", right: "20%", height: 2, background: T.accent, borderRadius: "0 0 4px 4px" }} />
-                )}
-                <span style={{ fontSize: 24 }}>{n.icon}</span>
-                <span style={{ fontSize: 10, fontWeight: isActive ? 700 : 400 }}>{n.label}</span>
-                {n.id === "heute" && todayTasks.length > 0 && (
-                  <div style={{ position: "absolute", top: 10, right: "22%", width: 8, height: 8, borderRadius: "50%", background: T.accent, border: `2px solid ${T.surface}` }} />
+                <span>{n.icon}</span>
+                <span style={{ fontSize: 10, fontWeight: 600 }}>{n.label}</span>
+                {badge > 0 && (
+                  <span style={{ position: "absolute", top: 4, right: 8, background: T.accent, color: "white", borderRadius: 99, fontSize: 8, padding: "1px 4px", fontWeight: 700 }}>{badge}</span>
                 )}
               </button>
             );
