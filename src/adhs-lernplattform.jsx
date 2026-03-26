@@ -3033,16 +3033,16 @@ function Kalender({ exams, tasks, setTasks, dailyMinutes, addXP, semesterPlan, s
     const prompt = `ADHS-Lerncoach. Semesterlernplan für ${examList.length} Klausuren.
 
 Fächer: ${examList.map(e => `${e.subject}(id=${e.id},klausur=${e.date},tage=${e.daysLeft})`).join(" | ")}
-Heute: ${todayFormatted}, Täglich: ${dailyMinutes}min, Planung: nächste ${maxDays} Tage bis ${examList.find(e => e.daysLeft === Math.max(...examList.map(ex => ex.daysLeft)))?.date}.
+Heute: ${todayFormatted}, Täglich: ${dailyMinutes}min, Planung: ${maxDays} Tage bis ${examList.find(e => e.daysLeft === Math.max(...examList.map(ex => ex.daysLeft)))?.date}.
 
-WICHTIG: Du musst GENAU ${maxDays} Tage planen - nicht mehr, nicht weniger! Die letzte Klausur ist am ${Math.max(...examList.map(ex => ex.daysLeft))} Tagen von heute.
+WICHTIG: GENAU ${maxDays} Tage planen! Letzte Klausur: ${Math.max(...examList.map(ex => ex.daysLeft))} Tage.
 
 Regeln: Dringendste Fächer priorisieren. Letzte 3 Tage vor Klausur = Wiederholung. Max 2-3 Einheiten/Tag.
 
-NUR reines JSON:
-{"overview":"max 20 Wörter","days":{"${todayFormatted}":[{"task":"max 6 Wörter","duration":20,"type":"lernen","examId":"${examList[0]?.id || ""}"}]}}
+NUR reines JSON (max 1000 Zeichen):
+{"overview":"Semesterplan ${maxDays} Tage","days":{"${todayFormatted}":[{"task":"max 6 Wörter","duration":20,"type":"lernen","examId":"${examList[0]?.id || ""}"}]}}
 
-Fülle alle ${maxDays} Tage. examIds: ${examList.map(e => e.id).join(",")}`;
+Fülle alle ${maxDays} Tage. Halte tasks kurz. examIds: ${examList.map(e => e.id).join(",")}`;
 
     try {
       const raw = await callClaudeLarge([{ role: "user", content: prompt }]);
