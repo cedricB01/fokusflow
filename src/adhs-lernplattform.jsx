@@ -4371,11 +4371,23 @@ function ToggleBtn({ children, active, onClick }) {
   );
 }
 function Input({ label, value, onChange, placeholder, type = "text" }) {
+  const isMobile = useIsMobile();
   return (
     <div>
       {label && <div style={{ fontSize: 12, color: T.muted, marginBottom: 6 }}>{label}</div>}
       <input type={type} value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder}
-        style={{ width: "100%", background: T.surface, border: `1px solid ${T.border}`, borderRadius: 10, padding: "8px 12px", color: T.text, fontSize: 13, fontFamily: T.body }} />
+        style={{ 
+          width: "100%", 
+          background: T.surface, 
+          border: `1px solid ${T.border}`, 
+          borderRadius: 10, 
+          padding: isMobile ? "12px 16px" : "8px 12px", 
+          color: T.text, 
+          fontSize: isMobile ? 16 : 13, 
+          fontFamily: T.body,
+          minHeight: isMobile ? 48 : "auto",
+          touchAction: "manipulation"
+        }} />
     </div>
   );
 }
