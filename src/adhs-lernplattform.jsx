@@ -3712,6 +3712,7 @@ function FlashCard({ card, onDelete }) {
 // BADGES TAB
 // ════════════════════════════════════════════════
 function BadgesTab({ badges, xp, streak, tasks, cards, onImport }) {
+  const isMobile = useIsMobile();
   const [importing, setImporting] = useState(false);
   const [importMsg, setImportMsg] = useState(null);
   const importRef = useRef();
@@ -3741,13 +3742,13 @@ function BadgesTab({ badges, xp, streak, tasks, cards, onImport }) {
   const getProgress = (badge) => {
     switch (badge.id) {
       case "first_session": return { current: doneTasks > 0 ? 1 : 0, max: 1 };
-      // Level-System für Streaks - nur nächstes Level anzeigen
+      // Streak System - nur nächstes Level anzeigen
       case "streak_3": 
         return { current: Math.min(streak, 3), max: 3 };
       case "streak_7": 
-        return { current: isUnlocked("streak_3") ? Math.min(Math.max(0, streak - 3), 4) : 0, max: 4 };
+        return { current: isUnlocked("streak_3") ? Math.min(streak - 3, 4) : 0, max: 4 };
       case "streak_14": 
-        return { current: isUnlocked("streak_7") ? Math.min(Math.max(0, streak - 7), 7) : 0, max: 7 };
+        return { current: isUnlocked("streak_7") ? Math.min(streak - 7, 7) : 0, max: 7 };
       case "level_5": return { current: Math.min(level, 5), max: 5 };
       case "level_10": return { current: Math.min(level, 10), max: 10 };
       case "level_20": return { current: Math.min(level, 20), max: 20 };
@@ -3790,7 +3791,7 @@ function BadgesTab({ badges, xp, streak, tasks, cards, onImport }) {
       </div>
 
       {/* Level-Übersicht */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16, marginBottom: 28 }}>
+      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "1fr 1fr 1fr", gap: 16, marginBottom: 28 }}>
         <div style={{ background: T.card, border: `1px solid ${T.border}`, borderRadius: 16, padding: 20 }}>
           <div style={{ fontSize: 32, marginBottom: 8 }}>⭐</div>
           <div style={{ fontFamily: T.font, fontSize: 28, fontWeight: 800, color: T.accent }}>Level {level}</div>
@@ -3851,7 +3852,7 @@ function BadgesTab({ badges, xp, streak, tasks, cards, onImport }) {
 
       {/* Badges Grid */}
       <div style={{ fontFamily: T.font, fontWeight: 700, fontSize: 15, marginBottom: 16 }}>Alle Badges</div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 12 }}>
+      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(auto-fill, minmax(200px, 1fr))", gap: 12 }}>
         {BADGES.map(badge => {
           const unlocked = isUnlocked(badge.id);
           const available = isAvailable(badge);
