@@ -620,7 +620,7 @@ export default function App() {
     }));
     setActiveTask(null);
     
-    // Automatische Plan-Neugenerierung prüfen
+    // Automatische Plan-Neugenerierung prüfen (inline)
     setTimeout(() => {
       const today = todayStr();
       const todayTasks = tasks.filter(t => t.plannedDate === today);
