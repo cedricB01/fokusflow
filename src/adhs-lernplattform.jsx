@@ -593,37 +593,6 @@ export default function App() {
     addXP(10);
   };
 
-  const completeTask = (id, feedback) => {
-    const task = tasks.find(t => t.id === id);
-    const xpGain = feedback === "verstanden" ? task?.xpVal : feedback === "teilweise" ? Math.floor((task?.xpVal||25) / 2) : 5;
-    if (feedback === "verstanden") {
-      setCompletionAnim({ ts: Date.now() });
-      setTimeout(() => setCompletionAnim(null), 2000);
-      setTimeout(() => showToast("🎉", `+${xpGain} XP – Gut gemacht!`), 300);
-    } else if (feedback === "teilweise") {
-      setTimeout(() => showToast("💪", `+${xpGain} XP – Weitermachen!`), 100);
-    }
-    setTasks(prev => prev.map(t => {
-      if (t.id !== id) return t;
-      addXP(xpGain);
-      markStudiedToday();
-      const newPriority = feedback === "verstanden" ? (t.priority || 1) * 0.5
-        : feedback === "teilweise" ? (t.priority || 1) * 1.2
-        : (t.priority || 1) * 2;
-      return { ...t, done: feedback === "verstanden", feedback, priority: newPriority, doneDate: todayStr() };
-    }));
-    setExams(prev => prev.map(e => {
-      if (e.id !== tasks.find(t => t.id === id)?.examId) return e;
-      const examTasks = tasks.filter(t => t.examId === e.id);
-      const doneTasks = examTasks.filter(t => t.done || t.id === id).length;
-      return { ...e, progress: Math.round((doneTasks / examTasks.length) * 100) };
-    }));
-    setActiveTask(null);
-    
-    // Automatische Plan-Neugenerierung prüfen
-    setTimeout(() => checkAndRegeneratePlan(), 1000);
-  };
-
   // Heutige Tasks: gleiche Logik wie Dashboard und Heute-Tab
   const unplannedNavTasks = tasks.filter(t => !t.doneDate && (!t.plannedDate || t.plannedDate <= todayStr()));
   const sortedNavTasks = [...unplannedNavTasks].sort((a, b) => {
@@ -3101,6 +3070,37 @@ examIds: ${examList.map(e => e.id).join(",")}`;
       console.log("Alle heutigen Aufgaben erledigt - generiere neuen Plan...");
       await generateSemesterPlan();
     }
+  };
+
+  const completeTask = (id, feedback) => {
+    const task = tasks.find(t => t.id === id);
+    const xpGain = feedback === "verstanden" ? task?.xpVal : feedback === "teilweise" ? Math.floor((task?.xpVal||25) / 2) : 5;
+    if (feedback === "verstanden") {
+      setCompletionAnim({ ts: Date.now() });
+      setTimeout(() => setCompletionAnim(null), 2000);
+      setTimeout(() => showToast("🎉", `+${xpGain} XP – Gut gemacht!`), 300);
+    } else if (feedback === "teilweise") {
+      setTimeout(() => showToast("💪", `+${xpGain} XP – Weitermachen!`), 100);
+    }
+    setTasks(prev => prev.map(t => {
+      if (t.id !== id) return t;
+      addXP(xpGain);
+      markStudiedToday();
+      const newPriority = feedback === "verstanden" ? (t.priority || 1) * 0.5
+        : feedback === "teilweise" ? (t.priority || 1) * 1.2
+        : (t.priority || 1) * 2;
+      return { ...t, done: feedback === "verstanden", feedback, priority: newPriority, doneDate: todayStr() };
+    }));
+    setExams(prev => prev.map(e => {
+      if (e.id !== tasks.find(t => t.id === id)?.examId) return e;
+      const examTasks = tasks.filter(t => t.examId === e.id);
+      const doneTasks = examTasks.filter(t => t.done || t.id === id).length;
+      return { ...e, progress: Math.round((doneTasks / examTasks.length) * 100) };
+    }));
+    setActiveTask(null);
+    
+    // Automatische Plan-Neugenerierung prüfen
+    setTimeout(() => checkAndRegeneratePlan(), 1000);
   };
 
   // Kalender-Hilfsfunktionen
