@@ -619,19 +619,6 @@ export default function App() {
       return { ...e, progress: Math.round((doneTasks / examTasks.length) * 100) };
     }));
     setActiveTask(null);
-    
-    // Automatische Plan-Neugenerierung prüfen (inline)
-    setTimeout(() => {
-      const today = todayStr();
-      const todayTasks = tasks.filter(t => t.plannedDate === today);
-      const allDone = todayTasks.length > 0 && todayTasks.every(t => t.done);
-      
-      // Nur neu planen wenn alle heutigen Aufgaben erledigt sind und ein Plan existiert
-      if (allDone && semesterPlan && !generatingSemester) {
-        console.log("Alle heutigen Aufgaben erledigt - generiere neuen Plan...");
-        generateSemesterPlan();
-      }
-    }, 1000);
   };
 
   // Heutige Tasks: gleiche Logik wie Dashboard und Heute-Tab
