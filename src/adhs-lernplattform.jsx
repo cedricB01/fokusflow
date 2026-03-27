@@ -593,19 +593,6 @@ export default function App() {
     addXP(10);
   };
 
-  // Automatische Plan-Neugenerierung nach täglichen Aufgaben
-  const checkAndRegeneratePlan = async () => {
-    const today = todayStr();
-    const todayTasks = tasks.filter(t => t.plannedDate === today);
-    const allDone = todayTasks.length > 0 && todayTasks.every(t => t.done);
-    
-    // Nur neu planen wenn alle heutigen Aufgaben erledigt sind und ein Plan existiert
-    if (allDone && semesterPlan && !generatingSemester) {
-      console.log("Alle heutigen Aufgaben erledigt - generiere neuen Plan...");
-      await generateSemesterPlan();
-    }
-  };
-
   const completeTask = (id, feedback) => {
     const task = tasks.find(t => t.id === id);
     const xpGain = feedback === "verstanden" ? task?.xpVal : feedback === "teilweise" ? Math.floor((task?.xpVal||25) / 2) : 5;
@@ -3101,6 +3088,19 @@ examIds: ${examList.map(e => e.id).join(",")}`;
       addXP(50);
     } catch (err) { console.error("Semesterplan Fehler:", err); }
     setGenerating(false);
+  };
+
+  // Automatische Plan-Neugenerierung nach täglichen Aufgaben
+  const checkAndRegeneratePlan = async () => {
+    const today = todayStr();
+    const todayTasks = tasks.filter(t => t.plannedDate === today);
+    const allDone = todayTasks.length > 0 && todayTasks.every(t => t.done);
+    
+    // Nur neu planen wenn alle heutigen Aufgaben erledigt sind und ein Plan existiert
+    if (allDone && semesterPlan && !generatingSemester) {
+      console.log("Alle heutigen Aufgaben erledigt - generiere neuen Plan...");
+      await generateSemesterPlan();
+    }
   };
 
   // Kalender-Hilfsfunktionen
