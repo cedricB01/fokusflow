@@ -340,30 +340,6 @@ export default function App() {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Tägliche automatische Plan-Neugenerierung um 23:59
-  useEffect(() => {
-    const checkAndGenerateDailyPlan = () => {
-      const now = new Date();
-      const hours = now.getHours();
-      const minutes = now.getMinutes();
-      
-      // Prüfen ob es 23:59 Uhr ist
-      if (hours === 23 && minutes === 59) {
-        console.log("Tägliche Plan-Neugenerierung um 23:59 Uhr...");
-        
-        // Nur generieren wenn Klausuren existieren und nicht bereits am generieren
-        if (exams.length > 0 && !generatingSemester && semesterPlan) {
-          generateSemesterPlan();
-        }
-      }
-    };
-
-    // Jede Minute prüfen
-    const interval = setInterval(checkAndGenerateDailyPlan, 60000); // 60 Sekunden
-    
-    return () => clearInterval(interval);
-  }, [exams.length, generatingSemester, semesterPlan]);
-
   // Automatische Lernplan-Anpassung bei Änderung der täglichen Lernzeit
   useEffect(() => {
     if (semesterPlan && exams.length > 0 && !generatingSemester) {
